@@ -124,15 +124,8 @@ function App() {
         }
         // Only force logout on explicit auth failures (not network errors)
         if (res.status === 401 || res.status === 403) {
-          const errData = await res.json().catch(() => ({}));
-          console.warn('Session invalidated by server:', errData);
-          // Only logout if server explicitly says session is invalid
-          // (not if it's just offline)
-          if (errData.detail && typeof errData.detail === 'string' &&
-            (errData.detail.toLowerCase().includes('invalid') ||
-             errData.detail.toLowerCase().includes('expired'))) {
-            handleLogout();
-          }
+          console.warn('Session rejected by server – clearing local session.');
+          handleLogout();
         }
         return null;
       })

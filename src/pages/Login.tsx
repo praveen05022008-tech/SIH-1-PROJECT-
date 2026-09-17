@@ -119,6 +119,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
 
       if (response.ok) {
         const data = await response.json();
+        // Clear any stale offline tokens before using real backend JWT
+        localStorage.removeItem('raksha_local_users');
         onLoginSuccess({
           id: data.id,
           email: data.email,

@@ -3,7 +3,14 @@ import subprocess
 import tempfile
 import traceback
 import httpx
-import whisper
+try:
+    import whisper as _whisper_module
+    _WHISPER_AVAILABLE = True
+except ImportError:
+    _whisper_module = None  # type: ignore
+    _WHISPER_AVAILABLE = False
+    print("[WhisperService] openai-whisper not installed. Local transcription unavailable.")
+
 from config import settings
 
 # Ensure system PATH includes homebrew for ffmpeg
@@ -22,14 +29,17 @@ _local_whisper_model = None
 
 def get_local_whisper_model():
     global _local_whisper_model
+    if not _WHISPER_AVAILABLE:
+        return None
     if _local_whisper_model is None:
         try:
             print("[WhisperService] Loading local Whisper fallback model...")
-            _local_whisper_model = whisper.load_model("base")
+            _local_whisper_model = _whisper_module.load_model("base")
             print("[WhisperService] Local Whisper model loaded.")
         except Exception as e:
             print("[WhisperService] Error loading local Whisper model:", e)
     return _local_whisper_model
+
 
 
 def transcribe_and_translate_audio(audio_bytes: bytes, filename: str = "voicenote.webm", task: str = "transcribe") -> dict:

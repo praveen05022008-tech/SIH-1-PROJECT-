@@ -1,10 +1,12 @@
 {
-  "name": "frontend",
+  "name": "sih-shield-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "start": "concurrently --kill-others-on-fail --names \"FRONTEND,BACKEND\" --prefix-colors \"cyan.bold,magenta.bold\" \"vite\" \"cd backend && python -m uvicorn main:app --reload --port 8000\"",
     "dev": "vite",
+    "backend": "cd backend && python -m uvicorn main:app --reload --port 8000",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
@@ -22,6 +24,7 @@
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
     "autoprefixer": "^10.5.4",
+    "concurrently": "^10.0.5",
     "oxlint": "^1.79.0",
     "postcss": "^8.5.26",
     "tailwindcss": "^4.3.3",
