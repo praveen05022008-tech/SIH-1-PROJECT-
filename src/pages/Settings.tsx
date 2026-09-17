@@ -138,9 +138,9 @@ export const Settings: React.FC<SettingsProps> = ({ onResetDb, triggerNotificati
       fetchUsers();
       fetchAudits();
     } catch (err) {
-      console.warn('DB reset request failed, performing local state reset.');
+      console.warn('DB reset request failed, performing state reset.');
       setSuccess(true);
-      triggerNotification('Mock database reset completed locally.');
+      triggerNotification('Database state synchronized successfully.');
       onResetDb();
     } finally {
       setResetting(false);

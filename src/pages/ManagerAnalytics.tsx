@@ -51,141 +51,6 @@ interface DangerousActivity {
   recommendedControl: string;
 }
 
-const MOCK_LOCATION_RISKS: LocationRisk[] = [
-  {
-    site: 'Duliajan Field',
-    unit: 'Well Pad C-7 & Drilling Rig 4',
-    totalEvents: 34,
-    highSifCount: 14,
-    avgSifScore: 8.7,
-    topHazard: 'Pressurized Gas Line Flange Leaks',
-    barrierFailureRate: 64,
-    riskStatus: 'CRITICAL'
-  },
-  {
-    site: 'Numaligarh Refinery',
-    unit: 'Distillation Tower T-4 & CDU-II',
-    totalEvents: 28,
-    highSifCount: 11,
-    avgSifScore: 7.9,
-    topHazard: 'Elevated Platform Fall Protection Bypass',
-    barrierFailureRate: 52,
-    riskStatus: 'HIGH'
-  },
-  {
-    site: 'Jorhat Gas Station',
-    unit: 'Gas Compressor Unit G-3',
-    totalEvents: 19,
-    highSifCount: 7,
-    avgSifScore: 7.2,
-    topHazard: 'Lockout/Tagout (LOTO) Energy Isolation Gap',
-    barrierFailureRate: 41,
-    riskStatus: 'HIGH'
-  },
-  {
-    site: 'Digboi Refinery',
-    unit: 'Historical Plant Unit 2 & Storage Yard',
-    totalEvents: 15,
-    highSifCount: 3,
-    avgSifScore: 5.4,
-    topHazard: 'Confined Space Ventilation & Toxic Vapor',
-    barrierFailureRate: 28,
-    riskStatus: 'MODERATE'
-  }
-];
-
-const MOCK_HAZARD_PATTERNS: HazardPattern[] = [
-  {
-    category: 'Pressurized Systems & Flange Leaks',
-    count: 32,
-    percentage: 34,
-    sifPotentialCount: 18,
-    trend: 'up',
-    trendValue: '+18% vs last month',
-    energySource: 'Pressurized Hydrocarbon Gas / High Pressure Fluid'
-  },
-  {
-    category: 'Working at Height (>2m)',
-    count: 24,
-    percentage: 25,
-    sifPotentialCount: 12,
-    trend: 'down',
-    trendValue: '-8% vs last month',
-    energySource: 'Gravitational Potential'
-  },
-  {
-    category: 'Energy Isolation & Lockout / Tagout',
-    count: 18,
-    percentage: 19,
-    sifPotentialCount: 9,
-    trend: 'up',
-    trendValue: '+12% vs last month',
-    energySource: 'Electrical & Stored Mechanical Energy'
-  },
-  {
-    category: 'Confined Space Entry & Inert Atmospheres',
-    count: 12,
-    percentage: 13,
-    sifPotentialCount: 7,
-    trend: 'neutral',
-    trendValue: '0% change',
-    energySource: 'Asphyxiating / Toxic Gas Accumulation'
-  },
-  {
-    category: 'Heavy Lifting & Suspended Loads',
-    count: 9,
-    percentage: 9,
-    sifPotentialCount: 4,
-    trend: 'down',
-    trendValue: '-15% vs last month',
-    energySource: 'Kinetic / Overhead Mechanical'
-  }
-];
-
-const MOCK_LSR_TRENDS: LsrTrend[] = [
-  { rule: 'Energy Isolation (LOTO)', complianceRate: 78, violationsCount: 14, highSifCount: 8, trend: 'deteriorating' },
-  { rule: 'Work at Height Fall Protection', complianceRate: 84, violationsCount: 11, highSifCount: 6, trend: 'improving' },
-  { rule: 'Confined Space Entry Permit', complianceRate: 91, violationsCount: 4, highSifCount: 3, trend: 'stable' },
-  { rule: 'Bypassing Safety Critical Barriers', complianceRate: 72, violationsCount: 19, highSifCount: 12, trend: 'deteriorating' },
-  { rule: 'Hot Work in Classified Zones', complianceRate: 88, violationsCount: 6, highSifCount: 2, trend: 'improving' },
-  { rule: 'Line of Fire & Suspended Loads', complianceRate: 85, violationsCount: 8, highSifCount: 4, trend: 'stable' }
-];
-
-const MOCK_DANGEROUS_ACTIVITIES: DangerousActivity[] = [
-  {
-    activity: 'Flange Re-torquing under Operating Pressure',
-    discipline: 'Process Piping & Mechanical',
-    precursorCount: 16,
-    severityLevel: 'CRITICAL',
-    dominantSite: 'Duliajan Field',
-    recommendedControl: 'Mandatory line depressurization and double block & bleed verification.'
-  },
-  {
-    activity: 'Scaffold Inspection & Rigging >10m',
-    discipline: 'Civil & Scaffolding Works',
-    precursorCount: 11,
-    severityLevel: 'HIGH',
-    dominantSite: 'Numaligarh Refinery',
-    recommendedControl: '100% tie-off dual lanyard enforcement and engineered anchor inspections.'
-  },
-  {
-    activity: 'Compressor Turbine Bearing Lubrication',
-    discipline: 'Rotary Equipment Operations',
-    precursorCount: 8,
-    severityLevel: 'HIGH',
-    dominantSite: 'Jorhat Gas Station',
-    recommendedControl: 'Positive mechanical lockout; zero electrical rotation permit verification.'
-  },
-  {
-    activity: 'Crude Sludge Tank Internal Washing',
-    discipline: 'Confined Space Tank Cleaning',
-    precursorCount: 5,
-    severityLevel: 'HIGH',
-    dominantSite: 'Digboi Refinery',
-    recommendedControl: 'Continuous multi-gas telemetry monitoring and dedicated rescue tripod.'
-  }
-];
-
 export const ManagerAnalytics: React.FC<ManagerAnalyticsProps> = ({
   user,
   triggerNotification,
@@ -194,10 +59,108 @@ export const ManagerAnalytics: React.FC<ManagerAnalyticsProps> = ({
   const [selectedSite, setSelectedSite] = useState<string>('All');
   const [timeRange, setTimeRange] = useState<string>('30d');
   const [loading, setLoading] = useState<boolean>(false);
-  const [locationRisks] = useState<LocationRisk[]>(MOCK_LOCATION_RISKS);
-  const [hazardPatterns] = useState<HazardPattern[]>(MOCK_HAZARD_PATTERNS);
-  const [lsrTrends] = useState<LsrTrend[]>(MOCK_LSR_TRENDS);
-  const [dangerousActivities] = useState<DangerousActivity[]>(MOCK_DANGEROUS_ACTIVITIES);
+  const [locationRisks, setLocationRisks] = useState<LocationRisk[]>([]);
+  const [hazardPatterns, setHazardPatterns] = useState<HazardPattern[]>([]);
+  const [lsrTrends, setLsrTrends] = useState<LsrTrend[]>([]);
+  const [dangerousActivities, setDangerousActivities] = useState<DangerousActivity[]>([]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(apiUrl('/api/events'))
+      .then(res => res.ok ? res.json() : [])
+      .then((events: any[]) => {
+        if (Array.isArray(events) && events.length > 0) {
+          // 1. Group by Site
+          const siteMap: Record<string, any[]> = {};
+          events.forEach(e => {
+            const s = e.site || 'Site Alpha - Jamnagar Complex';
+            if (!siteMap[s]) siteMap[s] = [];
+            siteMap[s].push(e);
+          });
+
+          const locs: LocationRisk[] = Object.entries(siteMap).map(([siteName, evts]) => {
+            const highCount = evts.filter(x => x.sif_potential === 'Critical' || x.sif_potential === 'High').length;
+            const avgScore = evts.reduce((acc, curr) => acc + (curr.risk_score || 50), 0) / evts.length;
+            return {
+              site: siteName,
+              unit: evts[0]?.unit || 'Primary Unit',
+              totalEvents: evts.length,
+              highSifCount: highCount,
+              avgSifScore: Math.round((avgScore / 10) * 10) / 10,
+              topHazard: evts[0]?.hazard || evts[0]?.hazard_category || 'Operational Hazard',
+              barrierFailureRate: Math.min(100, Math.round((highCount / evts.length) * 100)),
+              riskStatus: avgScore > 75 ? 'CRITICAL' : (avgScore > 50 ? 'HIGH' : 'MODERATE')
+            };
+          });
+          setLocationRisks(locs);
+
+          // 2. Group by Hazard Category
+          const hazardMap: Record<string, any[]> = {};
+          events.forEach(e => {
+            const cat = e.hazard_category || 'General Safety Hazard';
+            if (!hazardMap[cat]) hazardMap[cat] = [];
+            hazardMap[cat].push(e);
+          });
+
+          const patterns: HazardPattern[] = Object.entries(hazardMap).map(([catName, evts]) => {
+            const highCount = evts.filter(x => x.sif_potential === 'Critical' || x.sif_potential === 'High').length;
+            return {
+              category: catName,
+              count: evts.length,
+              percentage: Math.round((evts.length / events.length) * 100),
+              sifPotentialCount: highCount,
+              trend: 'up',
+              trendValue: `${Math.round((evts.length / events.length) * 100)}% of total`,
+              energySource: evts[0]?.energy_source || 'Mechanical / Gravitational'
+            };
+          });
+          setHazardPatterns(patterns);
+
+          // 3. Life-saving rules
+          const lsrMap: Record<string, any[]> = {};
+          events.forEach(e => {
+            const r = e.life_saving_rule || 'Follow Standard Protocol';
+            if (!lsrMap[r]) lsrMap[r] = [];
+            lsrMap[r].push(e);
+          });
+
+          const trends: LsrTrend[] = Object.entries(lsrMap).map(([ruleName, evts]) => {
+            const highCount = evts.filter(x => x.sif_potential === 'Critical' || x.sif_potential === 'High').length;
+            return {
+              rule: ruleName,
+              complianceRate: Math.max(40, 100 - (evts.length * 10)),
+              violationsCount: evts.length,
+              highSifCount: highCount,
+              trend: highCount > 2 ? 'deteriorating' : 'improving'
+            };
+          });
+          setLsrTrends(trends);
+
+          // 4. Dangerous activities
+          const acts: DangerousActivity[] = events.slice(0, 4).map(e => ({
+            activity: e.activity || e.hazard_category || 'Operational Task',
+            discipline: e.hazard_category || 'Process Safety',
+            precursorCount: 1,
+            severityLevel: (e.sif_potential?.toUpperCase() || 'MEDIUM') as any,
+            dominantSite: e.site || 'Jamnagar Complex',
+            recommendedControl: e.life_saving_rule || 'Enforce safety barriers before start.'
+          }));
+          setDangerousActivities(acts);
+        } else {
+          setLocationRisks([]);
+          setHazardPatterns([]);
+          setLsrTrends([]);
+          setDangerousActivities([]);
+        }
+      })
+      .catch(() => {
+        setLocationRisks([]);
+        setHazardPatterns([]);
+        setLsrTrends([]);
+        setDangerousActivities([]);
+      })
+      .finally(() => setLoading(false));
+  }, [triggerStateRefresh]);
 
   // Filtered location risks based on site filter
   const filteredLocations = useMemo(() => {

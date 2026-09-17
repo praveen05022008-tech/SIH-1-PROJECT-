@@ -21,106 +21,6 @@ const PRIORITY_COLORS: Record<string, string> = {
   LOW: 'bg-slate-100 text-slate-600 border-slate-200',
 };
 
-const MOCK_EVENTS: SafetyEvent[] = [
-  {
-    id: 'EVT-001', report_code: 'RPT-2024-0141', report_type: 'Unsafe Condition',
-    reporter_name: 'Aman Gogoi', reported_by: 'aman.gogoi@oilindia.in',
-    hazard_category: 'Pressurized Systems',
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
-    site: 'Duliajan Field', unit: 'Well Pad C-7',
-    location: 'Well Pad C-7 – Pressurized Gas Line Flange',
-    activity: 'Routine flange inspection during shutdown',
-    description: 'Leaking flange on pressurized gas line during inspection. Gas cloud visible near ignition sources. 3 workers in zone.',
-    hazard: 'High-pressure gas leak near ignition source',
-    energy_source: 'Pressurized Hydrocarbon Gas',
-    barrier: 'Pressure relief valve + Gas detector',
-    barrier_failure: 'Relief valve corroded. Gas detector offline.',
-    exposure: '3 workers within 5m of leak',
-    consequence: 'Flash fire or explosion if ignition source present',
-    sif_probability: 87.4, confidence: 91,
-    life_saving_rule: 'Energy Isolation',
-    status: 'Needs Review', reviewer: null, evidence: '',
-    risk_level: 'CRITICAL', sif_risk_score: 9.2,
-    l1_milestone: 'Upstream Operations', l2_unit: 'Well Pad C', l3_discipline: 'Process Safety',
-    l4_work_package: 'Flange Maintenance', l5_activity: 'Gas Line Inspection', l6_job: 'Flange Re-torquing'
-  },
-  {
-    id: 'EVT-002', report_code: 'RPT-2024-0138', report_type: 'Unsafe Act',
-    reporter_name: 'Priya Borah', reported_by: 'priya.borah@oilindia.in',
-    hazard_category: 'Working at Height',
-    timestamp: new Date(Date.now() - 86400000).toISOString(),
-    site: 'Numaligarh Refinery', unit: 'Tower T-4',
-    location: 'Distillation Tower T-4 – 3rd platform (14m elevation)',
-    activity: 'Instrumentation inspection and cable routing',
-    description: 'Observed 2 workers on the 3rd platform without double-lanyard fall protection. Anchor points available but not connected.',
-    hazard: 'Working at height without fall protection',
-    energy_source: 'Gravitational',
-    barrier: 'Double-lanyard harness + Anchor points',
-    barrier_failure: 'Harness present but not connected to anchor points',
-    exposure: '2 workers at 14m height',
-    consequence: 'Fatal fall from height',
-    sif_probability: 76.5, confidence: 88,
-    life_saving_rule: 'Work at Height',
-    status: 'Needs Review', reviewer: null, evidence: '',
-    risk_level: 'HIGH', sif_risk_score: 8.1,
-    l1_milestone: 'Refinery Operations', l2_unit: 'Distillation Unit', l3_discipline: 'Instrumentation',
-    l4_work_package: 'Tower Inspection', l5_activity: 'Platform Inspection', l6_job: 'Cable Routing'
-  },
-  {
-    id: 'EVT-003', report_code: 'RPT-2024-0135', report_type: 'Near Miss',
-    reporter_name: 'Bikash Sonowal', reported_by: 'bikash.sonowal@oilindia.in',
-    hazard_category: 'Energy Isolation / LOTO',
-    timestamp: new Date(Date.now() - 7200000).toISOString(),
-    site: 'Jorhat Gas Station', unit: 'Compressor Station G-3',
-    location: 'Gas Compressor G-3, Manifold Section',
-    activity: 'Scheduled maintenance on compressor manifold',
-    description: 'Maintenance crew began work before LOTO verification completed. 3 of 6 isolation points not locked out. Compressor still energized.',
-    hazard: 'Energized equipment access without complete LOTO',
-    energy_source: 'Electrical + Pressurized Gas',
-    barrier: 'LOTO procedure + PTW verification',
-    barrier_failure: 'Incomplete LOTO – crew started without supervisor sign-off',
-    exposure: '4 maintenance workers in energized zone',
-    consequence: 'Electrocution or pressurized gas release',
-    sif_probability: 81.2, confidence: 86,
-    life_saving_rule: 'Energy Isolation',
-    status: 'Needs Review', reviewer: null, evidence: '',
-    risk_level: 'HIGH', sif_risk_score: 8.6,
-    l1_milestone: 'Midstream Operations', l2_unit: 'Compression Unit G', l3_discipline: 'Mechanical',
-    l4_work_package: 'Compressor Maintenance', l5_activity: 'Manifold Servicing', l6_job: 'LOTO Application'
-  }
-];
-
-const MOCK_OFFICERS: OfficerProfile[] = [
-  {
-    id: 1, name: 'Ranjit Phukan', officer_name: 'Ranjit Phukan', officer_code: 'FNP001', employee_id: 'FNP001',
-    email: 'ranjit.phukan@oilindia.in', phone: '+91 94350 12345', radio_channel: 'CH-4', site: 'Duliajan Field',
-    unit: 'Well Pad C', shift: 'Morning', status: 'On Duty', role: 'Safety Officer', certifications: ['NEBOSH', 'H2S'],
-    experience_years: 8, max_capacity: 5, open_reviews_count: 1, active_tasks_count: 2, completed_tasks_count: 24,
-    total_tasks_count: 26, workload_score: 40, compliance_rate: 98
-  },
-  {
-    id: 2, name: 'Deepa Hazarika', officer_name: 'Deepa Hazarika', officer_code: 'FNP002', employee_id: 'FNP002',
-    email: 'deepa.hazarika@oilindia.in', phone: '+91 94350 23456', radio_channel: 'CH-7', site: 'Numaligarh Refinery',
-    unit: 'Distillation Unit', shift: 'Afternoon', status: 'On Duty', role: 'Safety Officer', certifications: ['OSHA 30'],
-    experience_years: 6, max_capacity: 5, open_reviews_count: 2, active_tasks_count: 3, completed_tasks_count: 18,
-    total_tasks_count: 21, workload_score: 60, compliance_rate: 95
-  },
-  {
-    id: 3, name: 'Mridul Bora', officer_name: 'Mridul Bora', officer_code: 'FNP003', employee_id: 'FNP003',
-    email: 'mridul.bora@oilindia.in', phone: '+91 94350 34567', radio_channel: 'CH-2', site: 'Jorhat Gas Station',
-    unit: 'Compressor Station G', shift: 'Morning', status: 'On Duty', role: 'Safety Officer', certifications: ['LOTO'],
-    experience_years: 10, max_capacity: 6, open_reviews_count: 0, active_tasks_count: 1, completed_tasks_count: 42,
-    total_tasks_count: 43, workload_score: 20, compliance_rate: 99
-  },
-  {
-    id: 4, name: 'Sanjukta Devi', officer_name: 'Sanjukta Devi', officer_code: 'FNP004', employee_id: 'FNP004',
-    email: 'sanjukta.devi@oilindia.in', phone: '+91 94350 45678', radio_channel: 'CH-9', site: 'Digboi Refinery',
-    unit: 'CDU Unit', shift: 'Night', status: 'Off Duty', role: 'Safety Officer', certifications: ['Confined Space'],
-    experience_years: 5, max_capacity: 4, open_reviews_count: 1, active_tasks_count: 1, completed_tasks_count: 15,
-    total_tasks_count: 16, workload_score: 25, compliance_rate: 92
-  },
-];
-
 export const AssignOfficer: React.FC<AssignOfficerProps> = ({
   user, triggerNotification, triggerStateRefresh, initialTab = 'assign'
 }) => {
@@ -168,12 +68,12 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
       if (offRes.ok) { const d = await offRes.json(); loadedOfficers = Array.isArray(d) ? d : []; }
       if (taskRes.ok) { const d = await taskRes.json(); loadedTasks = Array.isArray(d) ? d : []; }
 
-      setEvents(loadedEvents.length > 0 ? loadedEvents : MOCK_EVENTS);
-      setOfficers(loadedOfficers.length > 0 ? loadedOfficers : MOCK_OFFICERS);
+      setEvents(loadedEvents);
+      setOfficers(loadedOfficers);
       setTasks(loadedTasks);
     } catch {
-      setEvents(MOCK_EVENTS);
-      setOfficers(MOCK_OFFICERS);
+      setEvents([]);
+      setOfficers([]);
       setTasks([]);
     } finally {
       setLoading(false);
@@ -378,44 +278,59 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
                 </div>
               ) : (
                 <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
-                  {filteredEvents.map(evt => (
-                    <div key={evt.id}
-                      onClick={() => setSelectedEvent(selectedEvent?.id === evt.id ? null : evt)}
-                      className={`border rounded-xl p-4 cursor-pointer transition-all duration-150 ${
-                        selectedEvent?.id === evt.id
-                          ? 'border-[#008779] bg-[#EBF7F5] ring-2 ring-[#008779]/15 shadow-sm'
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/80'
-                      }`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                            <span className="text-[10px] font-black text-slate-400 font-mono">{evt.report_code || evt.id}</span>
-                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${riskColor(evt.risk_level)}`}>{evt.risk_level}</span>
-                            <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{evt.report_type}</span>
+                  {filteredEvents.map(evt => {
+                    const rawScore = evt.sif_risk_score ?? (evt.risk_score != null ? (evt.risk_score > 10 ? evt.risk_score / 10 : evt.risk_score) : 4.5);
+                    const score = Number(rawScore) || 4.5;
+                    const potential = (evt.sif_potential || (score >= 6.5 ? 'HIGH' : score >= 4.0 ? 'MEDIUM' : 'LOW')).toUpperCase();
+                    const isHigh = potential === 'CRITICAL' || potential === 'HIGH' || score >= 6.5;
+
+                    return (
+                      <div key={evt.id}
+                        onClick={() => setSelectedEvent(selectedEvent?.id === evt.id ? null : evt)}
+                        className={`border rounded-xl p-4 cursor-pointer transition-all duration-150 ${
+                          selectedEvent?.id === evt.id
+                            ? 'border-[#008779] bg-[#EBF7F5] ring-2 ring-[#008779]/15 shadow-sm'
+                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/80'
+                        }`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                              <span className="text-[10px] font-black text-slate-400 font-mono">{evt.report_code || evt.id}</span>
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${riskColor(evt.risk_level)}`}>{evt.risk_level || potential}</span>
+                              <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{evt.report_type || evt.condition || 'Observation'}</span>
+                            </div>
+                            <p className="text-xs font-bold text-slate-800 truncate">{evt.hazard_category || evt.hazard || 'Operational Safety Hazard'}</p>
+                            <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{evt.description || evt.raw_text || 'Field observation reported.'}</p>
+                            <div className="flex items-center gap-3 mt-2 flex-wrap">
+                              <span className="flex items-center gap-1 text-[10px] text-slate-500">
+                                <MapPin className="h-3 w-3 text-[#008779] shrink-0" />
+                                <span>{evt.location_detail ? `${evt.site || 'Site'} — ${evt.unit || 'Unit'} (${evt.location_detail})` : `${evt.site || 'Site'} — ${evt.unit || 'Unit'}`}</span>
+                              </span>
+                              <span className="flex items-center gap-1 text-[10px] text-slate-500">
+                                <User className="h-3 w-3 text-slate-400 shrink-0" />
+                                <span>{evt.reporter_name || 'Frontline Employee'}</span>
+                              </span>
+                            </div>
                           </div>
-                          <p className="text-xs font-bold text-slate-800 truncate">{evt.hazard_category}</p>
-                          <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{evt.description}</p>
-                          <div className="flex items-center gap-3 mt-2 flex-wrap">
-                            <span className="flex items-center gap-1 text-[10px] text-slate-500">
-                              <MapPin className="h-3 w-3" />{evt.site} — {evt.unit}
+                          <div className="shrink-0 flex flex-col items-end gap-1">
+                            <span className={`text-xs font-black font-mono px-2 py-0.5 rounded-full border ${
+                              isHigh
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : score >= 4.0
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            }`}>
+                              {potential} • {score.toFixed(1)}
                             </span>
-                            <span className="flex items-center gap-1 text-[10px] text-slate-500">
-                              <User className="h-3 w-3" />{evt.reporter_name}
-                            </span>
+                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">SIF Score</span>
+                            {selectedEvent?.id === evt.id && (
+                              <CheckCircle2 className="h-4 w-4 text-[#008779] mt-0.5" />
+                            )}
                           </div>
-                        </div>
-                        <div className="shrink-0 flex flex-col items-end gap-2">
-                          <span className={`text-lg font-black font-mono ${evt.sif_probability && evt.sif_probability > 80 ? 'text-red-600' : 'text-orange-500'}`}>
-                            {evt.sif_probability?.toFixed(0)}%
-                          </span>
-                          <span className="text-[9px] text-slate-400 font-semibold">SIF Score</span>
-                          {selectedEvent?.id === evt.id && (
-                            <CheckCircle2 className="h-4 w-4 text-[#008779] mt-1" />
-                          )}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {filteredEvents.length === 0 && (
                     <div className="text-center py-12 text-slate-400 text-sm">No reports found.</div>
                   )}
@@ -433,11 +348,13 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
               </h3>
               {selectedEvent ? (
                 <div className="space-y-1.5">
-                  <p className="text-xs font-black text-slate-800">{selectedEvent.hazard_category}</p>
-                  <p className="text-[10px] text-slate-500">{selectedEvent.site} — {selectedEvent.unit}</p>
-                  <p className="text-[10px] text-slate-500 line-clamp-2">{selectedEvent.description}</p>
+                  <p className="text-xs font-black text-slate-800">{selectedEvent.hazard_category || selectedEvent.hazard}</p>
+                  <p className="text-[10px] text-slate-500">
+                    {selectedEvent.location_detail ? `${selectedEvent.site} — ${selectedEvent.unit} (${selectedEvent.location_detail})` : `${selectedEvent.site} — ${selectedEvent.unit}`}
+                  </p>
+                  <p className="text-[10px] text-slate-500 line-clamp-2">{selectedEvent.description || selectedEvent.raw_text}</p>
                   <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border ${riskColor(selectedEvent.risk_level)}`}>
-                    <Flame className="h-2.5 w-2.5" /> {selectedEvent.risk_level} RISK
+                    <Flame className="h-2.5 w-2.5" /> {selectedEvent.risk_level || 'MEDIUM'} RISK
                   </div>
                 </div>
               ) : (
@@ -459,12 +376,15 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
                   onChange={e => setAssignForm(p => ({ ...p, officerId: e.target.value }))}
                   className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779]">
                   <option value="">— Select Officer —</option>
-                  {officers.map(o => (
-                    <option key={o.id} value={o.id}>
-                      {o.officer_name || o.name} ({o.site})
-                      {o.status === 'Off Duty' ? ' [OFF DUTY]' : ''}
-                    </option>
-                  ))}
+                  {officers.map(o => {
+                    const offName = o.officer_name || o.name || 'Safety Officer';
+                    const tag = o.id_number || o.site || o.role || 'Safety Officer';
+                    return (
+                      <option key={o.id} value={o.id}>
+                        {offName} • {tag}{o.status === 'Off Duty' ? ' [OFF DUTY]' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 

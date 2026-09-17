@@ -47,81 +47,6 @@ export const AiAnalysis: React.FC<AiAnalysisProps> = ({
   const [validating, setValidating] = useState(false);
   const [validationSuccess, setValidationSuccess] = useState<string | null>(null);
 
-  const MOCK_EVENTS: SafetyEvent[] = [
-    {
-      id: 'EVT-001', report_code: 'RPT-2024-0141', report_type: 'Near Miss',
-      reporter_name: 'Suresh Kumar', reported_by: 'suresh.kumar@oilindia.in',
-      hazard_category: 'Pressure / Hydrocarbon Release',
-      timestamp: new Date(Date.now() - 7200000).toISOString(),
-      site: 'Duliajan Field', unit: 'Well Pad C-7',
-      location: 'Well Pad C-7, Pump House Inlet',
-      activity: 'Pipeline maintenance – flange re-torquing',
-      description: 'Worker reported pressurized gas release from a loose flange on a 4-inch natural gas line. Two workers were in the proximity zone (within 3m) without respiratory PPE. The isolation valve was not in fully closed position.',
-      hazard: 'Pressurized gas leak with personnel in line of fire',
-      energy_source: 'Natural Gas – High Pressure',
-      barrier: 'Isolation valve + PTW system',
-      barrier_failure: 'Isolation valve not fully closed; PTW not verified',
-      exposure: '2 workers within 3m exclusion zone',
-      consequence: 'Flash fire or explosion if ignition source present',
-      sif_probability: 87.4, confidence: 91,
-      life_saving_rule: 'Energy Isolation',
-      status: 'Needs Review', reviewer: null, evidence: '',
-      risk_level: 'CRITICAL', sif_risk_score: 9.2,
-      explanation: 'NLP model detected coexistence of pressurized hydrocarbon energy vector with personnel inside the direct line of fire. Critical safety barrier (isolation valve) was reported as degraded/bypassed, meeting the catastrophic consequence threshold under LSR: Energy Isolation.',
-      recommended_action: 'Immediately halt all work on the 4-inch gas line. Re-verify isolation valve closure with lock-out/tag-out. Conduct gas test before any personnel re-entry into 3m exclusion zone.',
-      l1_milestone: 'Upstream Operations', l2_unit: 'Well Pad C', l3_discipline: 'Process Safety',
-      l4_work_package: 'Flange Maintenance', l5_activity: 'Gas Line Inspection', l6_job: 'Flange Re-torquing'
-    },
-    {
-      id: 'EVT-002', report_code: 'RPT-2024-0138', report_type: 'Unsafe Act',
-      reporter_name: 'Priya Borah', reported_by: 'priya.borah@oilindia.in',
-      hazard_category: 'Working at Height',
-      timestamp: new Date(Date.now() - 86400000).toISOString(),
-      site: 'Numaligarh Refinery', unit: 'Tower T-4',
-      location: 'Distillation Tower T-4 – 3rd platform (14m elevation)',
-      activity: 'Instrumentation inspection and cable routing',
-      description: 'Observed 2 workers on the 3rd platform of Tower T-4 without double-lanyard fall protection. Anchor points available but not connected. Work ongoing without active supervision.',
-      hazard: 'Working at height without fall protection',
-      energy_source: 'Gravitational',
-      barrier: 'Double-lanyard harness + Anchor points',
-      barrier_failure: 'Harness present but not connected to anchor points',
-      exposure: '2 workers at 14m height with unprotected fall path',
-      consequence: 'Fatal fall from height',
-      sif_probability: 76.5, confidence: 88,
-      life_saving_rule: 'Work at Height',
-      status: 'Needs Review', reviewer: null, evidence: '',
-      risk_level: 'HIGH', sif_risk_score: 8.1,
-      explanation: 'NLP model identified gravitational energy exposure at 14m elevation with confirmed absence of fall protection connection. Barrier (lanyard anchor) was present but not engaged, classifying this as a barrier bypass under LSR: Work at Height.',
-      recommended_action: 'Stop work immediately. Brief workers and verify all lanyards are properly connected to rated anchor points before resuming work. Assign a dedicated safety supervisor for the duration of the tower inspection.',
-      l1_milestone: 'Refinery Operations', l2_unit: 'Distillation Unit', l3_discipline: 'Instrumentation',
-      l4_work_package: 'Tower Inspection', l5_activity: 'Platform Inspection', l6_job: 'Cable Routing'
-    },
-    {
-      id: 'EVT-003', report_code: 'RPT-2024-0135', report_type: 'Near Miss',
-      reporter_name: 'Bikash Sonowal', reported_by: 'bikash.sonowal@oilindia.in',
-      hazard_category: 'Energy Isolation / LOTO',
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-      site: 'Jorhat Gas Station', unit: 'Compressor Station G-3',
-      location: 'Gas Compressor G-3, Manifold Section',
-      activity: 'Scheduled maintenance on compressor manifold',
-      description: 'Maintenance crew began work on the gas compressor manifold before LOTO verification was completed. 3 of 6 isolation points were not locked out. The compressor was still energized on a partial circuit.',
-      hazard: 'Energized equipment access without complete LOTO',
-      energy_source: 'Electrical + Pressurized Gas',
-      barrier: 'LOTO procedure + PTW verification',
-      barrier_failure: 'Incomplete LOTO – crew started without supervisor sign-off',
-      exposure: '4 maintenance workers in energized zone',
-      consequence: 'Electrocution or pressurized gas release causing serious injury',
-      sif_probability: 81.2, confidence: 86,
-      life_saving_rule: 'Energy Isolation',
-      status: 'Needs Review', reviewer: null, evidence: '',
-      risk_level: 'HIGH', sif_risk_score: 8.6,
-      explanation: 'Model detected active maintenance personnel in an energized zone with incomplete LOTO application. Only 3 of 6 required isolation points were locked out, leaving partial energy paths active – a direct violation of LSR: Energy Isolation.',
-      recommended_action: 'Cease all maintenance activity immediately. Complete all 6 LOTO points with supervisor verification and tag-out before any re-entry. Conduct root cause debrief on why work commenced without full isolation confirmation.',
-      l1_milestone: 'Midstream Operations', l2_unit: 'Compression Unit G', l3_discipline: 'Mechanical',
-      l4_work_package: 'Compressor Maintenance', l5_activity: 'Manifold Servicing', l6_job: 'LOTO Application'
-    }
-  ];
-
   const fetchEvents = async () => {
     setLoading(true);
     try {
@@ -129,22 +54,18 @@ export const AiAnalysis: React.FC<AiAnalysisProps> = ({
       if (res.ok) {
         const data: SafetyEvent[] = await res.json();
         const loaded = Array.isArray(data) ? data : [];
-        // Use mock events if DB is empty
-        const final = loaded.length > 0 ? loaded : MOCK_EVENTS;
-        setEvents(final);
+        setEvents(loaded);
         if (selectedEvent && selectedEvent.id) {
           setCurrentId(selectedEvent.id);
-        } else if (final.length > 0) {
-          setCurrentId(final[0].id);
+        } else if (loaded.length > 0) {
+          setCurrentId(loaded[0].id);
         }
       } else {
-        setEvents(MOCK_EVENTS);
-        setCurrentId(MOCK_EVENTS[0].id);
+        setEvents([]);
       }
     } catch (err) {
       console.warn('Failed to fetch events for AI analysis:', err);
-      setEvents(MOCK_EVENTS);
-      setCurrentId(MOCK_EVENTS[0].id);
+      setEvents([]);
     } finally {
       setLoading(false);
     }

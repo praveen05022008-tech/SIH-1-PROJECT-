@@ -83,124 +83,6 @@ export const Investigate: React.FC<InvestigateProps> = ({
     'Inadequate Training / Supervision'
   ];
 
-  const MOCK_TASKS: OfficerTask[] = [
-    {
-      id: 1, task_id: 'TSK-101',
-      title: 'Investigate Pressurized Line Leak at Well Pad C-7',
-      task_type: 'Field Investigation',
-      site: 'Duliajan Field', unit: 'Well Pad C-7',
-      priority: 'CRITICAL',
-      assigned_officer_id: 1,
-      assigned_officer_name: user?.name || 'Safety Officer',
-      assigned_by: 'Mgr. Rajesh Bora',
-      instructions: 'Conduct immediate field inspection of the reported pressurized pipeline leak. Document the barrier failure, identify root cause, and initiate stop-work if personnel are in the line of fire.',
-      status: 'Assigned',
-      due_date: new Date(Date.now() + 86400000).toISOString(),
-      findings: null, related_event_id: 'EVT-001',
-      created_at: new Date(Date.now() - 7200000).toISOString(), completed_at: null
-    },
-    {
-      id: 2, task_id: 'TSK-102',
-      title: 'Audit Fall Protection Compliance at Refinery Tower T-4',
-      task_type: 'Safety Audit',
-      site: 'Numaligarh Refinery', unit: 'Tower T-4',
-      priority: 'HIGH',
-      assigned_officer_id: 1,
-      assigned_officer_name: user?.name || 'Safety Officer',
-      assigned_by: 'Mgr. Priya Hazarika',
-      instructions: 'Verify all personnel working above 2m have double-lanyard harnesses attached to rated anchor points. Check permit-to-work documentation.',
-      status: 'In Progress',
-      due_date: new Date(Date.now() + 172800000).toISOString(),
-      findings: 'Initial inspection found 2 workers without proper anchor hook. Corrective briefing issued.',
-      related_event_id: 'EVT-002',
-      created_at: new Date(Date.now() - 86400000).toISOString(), completed_at: null
-    },
-    {
-      id: 3, task_id: 'TSK-103',
-      title: 'Energy Isolation Verification – Gas Compressor Station G-3',
-      task_type: 'LOTO Verification',
-      site: 'Jorhat Gas Station', unit: 'Compressor Station G-3',
-      priority: 'HIGH',
-      assigned_officer_id: 1,
-      assigned_officer_name: user?.name || 'Safety Officer',
-      assigned_by: 'Mgr. Rajesh Bora',
-      instructions: 'Verify that all 6 LOTO points are correctly applied and tagged before maintenance crew starts work on the compressor manifold.',
-      status: 'Assigned',
-      due_date: new Date(Date.now() + 43200000).toISOString(),
-      findings: null, related_event_id: 'EVT-003',
-      created_at: new Date(Date.now() - 3600000).toISOString(), completed_at: null
-    }
-  ];
-
-  const MOCK_EVENTS: SafetyEvent[] = [
-    {
-      id: 'EVT-001', report_code: 'RPT-2024-0141', report_type: 'Near Miss',
-      reporter_name: 'Suresh Kumar', reported_by: 'suresh.kumar@oilindia.in',
-      hazard_category: 'Pressure / Hydrocarbon Release',
-      timestamp: new Date(Date.now() - 7200000).toISOString(),
-      site: 'Duliajan Field', unit: 'Well Pad C-7',
-      location: 'Well Pad C-7, Pump House Inlet',
-      activity: 'Pipeline maintenance – flange re-torquing',
-      description: 'Worker reported pressurized gas release from a loose flange on a 4-inch natural gas line. Two workers were in the proximity zone (within 3m) without respiratory PPE. The isolation valve was not in fully closed position.',
-      hazard: 'Pressurized gas leak with personnel in line of fire',
-      energy_source: 'Natural Gas – High Pressure',
-      barrier: 'Isolation valve + PTW system',
-      barrier_failure: 'Isolation valve not fully closed; PTW not verified',
-      exposure: '2 workers within 3m exclusion zone',
-      consequence: 'Flash fire or explosion if ignition source present',
-      sif_probability: 87.4, confidence: 91,
-      life_saving_rule: 'Energy Isolation',
-      status: 'Needs Review', reviewer: null, evidence: '',
-      risk_level: 'CRITICAL', sif_risk_score: 9.2,
-      l1_milestone: 'Upstream Operations', l2_unit: 'Well Pad C', l3_discipline: 'Process Safety',
-      l4_work_package: 'Flange Maintenance', l5_activity: 'Gas Line Inspection', l6_job: 'Flange Re-torquing'
-    },
-    {
-      id: 'EVT-002', report_code: 'RPT-2024-0138', report_type: 'Unsafe Act',
-      reporter_name: 'Priya Borah', reported_by: 'priya.borah@oilindia.in',
-      hazard_category: 'Working at Height',
-      timestamp: new Date(Date.now() - 86400000).toISOString(),
-      site: 'Numaligarh Refinery', unit: 'Tower T-4',
-      location: 'Distillation Tower T-4 – 3rd platform (14m elevation)',
-      activity: 'Instrumentation inspection and cable routing',
-      description: 'Observed 2 workers on the 3rd platform of Tower T-4 without double-lanyard fall protection. Anchor points available but not connected. Work was ongoing without active supervision.',
-      hazard: 'Working at height without fall protection',
-      energy_source: 'Gravitational',
-      barrier: 'Double-lanyard harness + Anchor points',
-      barrier_failure: 'Harness present but not connected to anchor points',
-      exposure: '2 workers at 14m height with unprotected fall path',
-      consequence: 'Fatal fall from height',
-      sif_probability: 76.5, confidence: 88,
-      life_saving_rule: 'Work at Height',
-      status: 'Needs Review', reviewer: null, evidence: '',
-      risk_level: 'HIGH', sif_risk_score: 8.1,
-      l1_milestone: 'Refinery Operations', l2_unit: 'Distillation Unit', l3_discipline: 'Instrumentation',
-      l4_work_package: 'Tower Inspection', l5_activity: 'Platform Inspection', l6_job: 'Cable Routing'
-    },
-    {
-      id: 'EVT-003', report_code: 'RPT-2024-0135', report_type: 'Near Miss',
-      reporter_name: 'Bikash Sonowal', reported_by: 'bikash.sonowal@oilindia.in',
-      hazard_category: 'Energy Isolation / LOTO',
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-      site: 'Jorhat Gas Station', unit: 'Compressor Station G-3',
-      location: 'Gas Compressor G-3, Manifold Section',
-      activity: 'Scheduled maintenance on compressor manifold',
-      description: 'Maintenance crew began work on the gas compressor manifold before LOTO verification was completed. 3 of 6 isolation points were not locked out. The compressor was still energized on a partial circuit.',
-      hazard: 'Energized equipment access without complete LOTO',
-      energy_source: 'Electrical + Pressurized Gas',
-      barrier: 'LOTO procedure + PTW verification',
-      barrier_failure: 'Incomplete LOTO – crew started without supervisor sign-off',
-      exposure: '4 maintenance workers in energized zone',
-      consequence: 'Electrocution or pressurized gas release causing serious injury',
-      sif_probability: 81.2, confidence: 86,
-      life_saving_rule: 'Energy Isolation',
-      status: 'Needs Review', reviewer: null, evidence: '',
-      risk_level: 'HIGH', sif_risk_score: 8.6,
-      l1_milestone: 'Midstream Operations', l2_unit: 'Compression Unit G', l3_discipline: 'Mechanical',
-      l4_work_package: 'Compressor Maintenance', l5_activity: 'Manifold Servicing', l6_job: 'LOTO Application'
-    }
-  ];
-
   // Fetch candidate events and tasks
   const fetchCandidates = async () => {
     setLoading(true);
@@ -210,6 +92,8 @@ export const Investigate: React.FC<InvestigateProps> = ({
         fetch(apiUrl('/api/manager/tasks'), {
           headers: {
             'X-User-Email': user?.email || '',
+            'X-User-Id': String(user?.id || ''),
+            'X-User-Role': user?.role || '',
           }
         })
       ]);
@@ -220,15 +104,31 @@ export const Investigate: React.FC<InvestigateProps> = ({
       if (evtRes.ok) evts = await evtRes.json();
       if (taskRes.ok) tsks = await taskRes.json();
 
-      const loadedEvts = Array.isArray(evts) ? evts : [];
+      let loadedEvts = Array.isArray(evts) ? evts : [];
       let loadedTsks = Array.isArray(tsks) ? tsks : [];
 
       const isOfficer = user?.role === 'Safety Officer' || user?.role === 'Officer';
       const uName = (user?.name || '').toLowerCase().trim();
-      if (isOfficer && uName) {
+      const uEmail = (user?.email || '').toLowerCase().trim();
+      const uId = user?.id ? String(user.id) : '';
+
+      if (isOfficer) {
         loadedTsks = loadedTsks.filter(t => {
-          const tName = (t.assigned_officer_name || '').toLowerCase().trim();
-          return !tName || tName.includes(uName) || uName.includes(tName);
+          const tId = t.assigned_officer_id ? String(t.assigned_officer_id) : '';
+          if (uId && tId && uId === tId) return true;
+          const tEmail = ((t as any).assigned_officer_email || (t as any).officer_email || '').toLowerCase().trim();
+          if (uEmail && tEmail && uEmail === tEmail) return true;
+          const tName = (t.assigned_officer_name || t.assigned_to || '').toLowerCase().trim();
+          if (uName && tName && (tName.includes(uName) || uName.includes(tName))) return true;
+          return false;
+        });
+
+        loadedEvts = loadedEvts.filter(e => {
+          const eId = e.assigned_officer_id ? String(e.assigned_officer_id) : '';
+          if (uId && eId && uId === eId) return true;
+          const eName = (e.assigned_officer_name || '').toLowerCase().trim();
+          if (uName && eName && (eName.includes(uName) || uName.includes(eName))) return true;
+          return false;
         });
       }
 
@@ -240,14 +140,15 @@ export const Investigate: React.FC<InvestigateProps> = ({
         const id = selectedEvent.id || selectedEvent.task_id || '';
         setCurrentId(id);
         if (selectedEvent.findings) setFindings(selectedEvent.findings);
+      } else if (loadedTsks.length > 0) {
+        setCurrentId(loadedTsks[0].task_id || String(loadedTsks[0].id));
       } else if (loadedEvts.length > 0) {
         setCurrentId(loadedEvts[0].id);
       }
     } catch (err) {
       console.warn('Failed to load investigation targets:', err);
-      setEvents(MOCK_EVENTS);
-      setTasks(MOCK_TASKS);
-      setCurrentId(MOCK_EVENTS[0].id);
+      setEvents([]);
+      setTasks([]);
     } finally {
       setLoading(false);
     }

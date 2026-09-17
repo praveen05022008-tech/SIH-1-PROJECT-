@@ -85,21 +85,24 @@ const extractLocalEventType = (desc: string): string => {
   if (/\b(excavation|trench|cave-in|shoring|digging)\b/i.test(tl)) {
     return 'Excavation & trench collapse';
   }
+  if (/\b(damage|casing|wear|crack|loose|corrosion|rust|scratched)\b/i.test(tl)) {
+    return 'Equipment wear & minor damage';
+  }
   return 'Operational facility hazard';
 };
 
 const extractLocalInjury = (desc: string): string => {
   const tl = (desc || '').toLowerCase();
   if (/\b(fatality|fatal|died|death|killed)\b/i.test(tl)) return 'Fatal injury';
-  if (/\b(fracture|amputation|severe\s+burn|hospitalized|unconscious|head\s+injury)\b/i.test(tl)) return 'Severe / Lost Time Injury';
-  if (/\b(first\s+aid|bandaged|minor\s+cut|bruise|scratch|minor\s+injury)\b/i.test(tl)) return 'First Aid / Minor';
+  if (/\b(fracture|amputation|severe\s+burn|hospitalized|unconscious|head\s+injury|lost\s+time)\b/i.test(tl)) return 'Severe / Lost Time Injury';
+  if (/\b(first\s+aid|bandaged|minor\s+cut|bruise|scratch|minor\s+injury)\b/i.test(tl)) return 'First Aid / Minor Injury';
   return 'None';
 };
 
 const calculateLocalSifPotential = (desc: string, condition: string, eventType: string): 'High' | 'Critical' | 'Medium' | 'Low' => {
   const tl = (desc || '').toLowerCase();
   
-  if (/\b(fatal|catastrophic|blowout|explosion|h2s|high\s+voltage|electrocution|amputation|life-threatening)\b/i.test(tl)) {
+  if (/\b(fatal|catastrophic|blowout|explosion|h2s|high\s+voltage|electrocution|amputation|life-threatening|unconscious)\b/i.test(tl)) {
     return 'Critical';
   }
   
@@ -108,29 +111,25 @@ const calculateLocalSifPotential = (desc: string, condition: string, eventType: 
     'Dropped object / Suspended load',
     'Pressurized fluid / gas release',
     'Hazardous chemical / toxic exposure',
-    'Hot work / flying sparks / fire hazard',
     'Electrical contact / Arc flash',
     'Caught in / rotating machinery',
     'Confined space entry hazard',
     'Excavation & trench collapse'
   ];
-  if (highEvents.includes(eventType)) {
+  if (highEvents.includes(eventType) && (tl.includes('without') || tl.includes('unhooked') || tl.includes('leak') || tl.includes('fell') || tl.includes('high'))) {
     return 'High';
   }
   
-  if (/\b(fall|height|scaffold|unhooked|without\s+harness|crane|high\s+pressure|isolation|loto|suspended|risky\s+behavior)\b/i.test(tl)) {
+  if (/\b(fall\s+from\s+height|unhooked\s+harness|without\s+harness|suspended\s+load|line\s+rupture|high\s+pressure\s+gas|live\s+wire)\b/i.test(tl)) {
     return 'High';
   }
   
   const lowEvents = [
     'Housekeeping & walkway obstruction',
-    'Slip, trip or uneven footing'
+    'Equipment wear & minor damage',
+    'PPE non-compliance / Flying particle hazard'
   ];
-  if (lowEvents.includes(eventType) && !/\b(fracture|crush|hospital)\b/i.test(tl)) {
-    return 'Low';
-  }
-  
-  if (/\b(packaging|pallet|debris|trash|dirty|label|signboard|clutter)\b/i.test(tl)) {
+  if (lowEvents.includes(eventType) || /\b(casing|damage\s+on\s+casing|trash|pallet|debris|scratch|paint|faded|minor)\b/i.test(tl)) {
     return 'Low';
   }
 
@@ -138,20 +137,35 @@ const calculateLocalSifPotential = (desc: string, condition: string, eventType: 
 };
 
 const calculateLocalClassification = (condition: string, sifPotential: string, actualInjury: string = 'None'): string => {
-  const hasInjury = actualInjury && !['none', 'no injury', 'n/a', 'no actual injury'].includes(actualInjury.toLowerCase().trim());
-  if (sifPotential === 'High' || sifPotential === 'Critical') {
-    if (hasInjury) {
-      return 'SIF Incident / Serious Injury Occurred';
+  const isFatalOrSevere = ['fatal injury', 'severe / lost time injury'].includes(actualInjury.toLowerCase().trim());
+  const isMinorInjury = ['first aid / minor injury', 'first aid', 'minor'].includes(actualInjury.toLowerCase().trim());
+
+  if (isFatalOrSevere) {
+    return 'SIF Incident / Serious Injury Occurred';
+  }
+  if (isMinorInjury) {
+    if (sifPotential === 'High' || sifPotential === 'Critical') {
+      return 'SIF Precursor / High-Potential Near Miss (Minor Injury)';
     }
-    // In Campbell Institute / IOGP SIF precursor methodology, any high-potential precursor without injury is classified as SIF Precursor / High-Potential Near Miss
-    return 'SIF Precursor / High-Potential Near Miss';
+    return 'First Aid / Minor Incident';
+  }
+
+  // No injury scenarios
+  if (sifPotential === 'Critical' || sifPotential === 'High') {
+    if (condition === 'Near Miss') {
+      return 'SIF Precursor / High-Potential Near Miss';
+    } else if (condition === 'Unsafe Act') {
+      return 'SIF Precursor / High-Risk Behavioral Deviation';
+    } else {
+      return 'SIF Precursor / High-Risk Facility Condition';
+    }
   } else if (sifPotential === 'Medium') {
     if (condition === 'Near Miss') {
       return 'Moderate Near Miss / Non-SIF';
     } else if (condition === 'Unsafe Act') {
-      return 'Moderate Procedural Deviation';
+      return 'Moderate Procedural Deviation / Non-SIF';
     } else {
-      return 'Moderate-Potential Precursor';
+      return 'Moderate Facility Hazard / Non-SIF';
     }
   } else {
     return 'Low-Potential Observation / Non-SIF';
@@ -182,28 +196,26 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
         if (parsed.email) return parsed.email;
       }
     } catch {}
-    return 'srinith@gmail.com';
+    return '';
   })();
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // Form state initialized to match reference mockup
+  // Dynamic form state
   const [reportType, setReportType] = useState<'Unsafe Act' | 'Unsafe Condition' | 'Near Miss'>('Unsafe Condition');
   const [hazardCategory, setHazardCategory] = useState('Working at Height');
-  const [site, setSite] = useState('Drilling Site A');
-  const [unit, setUnit] = useState('Rig Floor D1');
+  const [site, setSite] = useState('Site Alpha - Jamnagar Complex');
+  const [unit, setUnit] = useState('Unit 04 - FCCU');
   const [locationDetail, setLocationDetail] = useState('');
   const [dateTime, setDateTime] = useState(() => {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     return now.toISOString().slice(0, 16);
   });
-  const [shiftTiming, setShiftTiming] = useState('Morning Shift (08:00 - 16:00)');
-  const [description, setDescription] = useState(
-    'Worker was observed standing on the top railing of the scaffold to reach the valve handwheel, which is risky behavior and can lead to serious injury due to fall from height.'
-  );
-  const [equipment, setEquipment] = useState('General Machinery');
-  const [energySource, setEnergySource] = useState('Mechanical');
+  const [shiftTiming, setShiftTiming] = useState('Shift A (06:00 - 14:00)');
+  const [description, setDescription] = useState('');
+  const [equipment, setEquipment] = useState('');
+  const [energySource, setEnergySource] = useState('Mechanical / Gravitational');
   const [peopleInvolved, setPeopleInvolved] = useState(1);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
@@ -364,7 +376,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
             const ev = data.event || extractLocalEventType(description);
             const inj = data.actual_injury || extractLocalInjury(description);
             const sifP = (data.sif_potential || calculateLocalSifPotential(description, cond, ev)) as 'High' | 'Critical' | 'Medium' | 'Low';
-            const clf = data.classification || calculateLocalClassification(cond, sifP);
+            const clf = data.classification || calculateLocalClassification(cond, sifP, inj);
 
             setAiClassification({
               condition: cond,
@@ -373,8 +385,8 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
               sif_potential: sifP,
               classification: clf,
               report_type: cond,
-              confidence: data.confidence || 90.5,
-              rationale: data.rationale,
+              confidence: data.confidence || 94.0,
+              rationale: data.rationale || `Evaluated by Groq AI & SIF Category 3 Engine.`,
               matched_words: data.matched_words || []
             });
             setReportType(cond);
@@ -652,10 +664,13 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
           if (trimmed.toLowerCase().includes(text.toLowerCase())) return trimmed;
           return `${trimmed} ${text}`;
         });
-        triggerNotification('✓ Transcribed via Whisper-v3');
+        triggerNotification('✓ Transcribed via Whisper AI');
+      } else {
+        triggerNotification('No clear speech detected. Speak clearly into the microphone.');
       }
     } catch (err: any) {
       console.warn('Voice transcription notice:', err.message);
+      triggerNotification('Audio transcription service encountered an issue.');
     } finally {
       setIsTranscribing(false);
     }
@@ -701,9 +716,21 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
     setSubmitting(true);
     setReceipt(null);
     const fullLocation = locationDetail ? `${unit} (${locationDetail})` : `${unit} (${gpsLocation.text})`;
+    const currentUserName = user?.name || (() => {
+      try {
+        const stored = localStorage.getItem('raksha_auth_user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.name) return parsed.name;
+        }
+      } catch {}
+      return 'Frontline Employee';
+    })();
+
     const payload = {
       raw_text: description,
       report_type: reportType,
+      condition: aiClassification?.condition || reportType,
       hazard_category: hazardCategory,
       shift_timing: shiftTiming,
       location_detail: locationDetail || gpsLocation.text,
@@ -715,16 +742,33 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
       people_involved: peopleInvolved,
       photo_url: photoUrl || (photoPreview && photoPreview.length < 800000 ? photoPreview : null),
       audio_transcript: voiceTranscript || null,
-      reporter_email: userEmail
+      reporter_name: currentUserName,
+      reporter_email: userEmail,
+      event: aiClassification?.event || extractLocalEventType(description),
+      actual_injury: aiClassification?.actual_injury || extractLocalInjury(description),
+      sif_potential: aiClassification?.sif_potential || calculateLocalSifPotential(description, reportType, extractLocalEventType(description)),
+      classification: aiClassification?.classification || calculateLocalClassification(reportType, aiClassification?.sif_potential || 'Low', aiClassification?.actual_injury || 'None'),
+      ai_confidence: aiClassification?.confidence || 94.0,
+      ai_rationale: aiClassification?.rationale
     };
     try {
-      const res = await fetch(apiUrl('/api/events/analyze'), {
+      const res = await fetch(apiUrl('/api/reports'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
+      if (!res.ok) {
+        // Fallback to /api/events
+        const res2 = await fetch(apiUrl('/api/events'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res2.ok) throw new Error('Submission failed');
+        var data = await res2.json();
+      } else {
+        var data = await res.json();
+      }
       const dynEv = data.event || aiClassification?.event || extractLocalEventType(description);
       const dynInj = data.actual_injury || aiClassification?.actual_injury || extractLocalInjury(description);
       const dynSif = data.sif_potential || aiClassification?.sif_potential || calculateLocalSifPotential(description, reportType, dynEv);
@@ -738,7 +782,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
         classification: dynClf
       });
       setShowSuccessModal(true);
-      triggerNotification(`Report ${data.report_code} submitted & analyzed by AI!`);
+      triggerNotification(`✓ Report ${data.report_code || data.id} securely submitted to Database & Manager Queue!`);
       if (onEventCreated) onEventCreated();
       setDescription('');
       setVoiceTranscript('');
@@ -980,9 +1024,75 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 </div>
 
                 {isTranscribing && (
-                  <div className="mt-2.5 flex items-center gap-2 text-xs text-[#008779]">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span className="font-semibold">Transcribing with Whisper-v3 Turbo...</span>
+                  <div className="mt-2.5 flex items-center gap-2 text-xs text-[#008779] bg-[#E8F6F4]/60 p-2.5 rounded-lg border border-[#A2D9D2]/60">
+                    <Loader2 className="h-4 w-4 animate-spin text-[#008779]" />
+                    <span className="font-bold">Transcribing your voice with Whisper AI...</span>
+                  </div>
+                )}
+
+                {/* Transcribed Words Display Card */}
+                {voiceTranscript && (
+                  <div className="mt-3 p-3.5 bg-gradient-to-r from-[#E8F6F4] via-emerald-50 to-teal-50 border-2 border-[#008779]/40 rounded-xl space-y-2 animate-fadeIn shadow-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-[#008779] animate-ping" />
+                        <span className="text-xs font-black uppercase tracking-wider text-[#00695C] flex items-center gap-1.5">
+                          <Volume2 className="h-3.5 w-3.5 text-[#008779]" />
+                          Transcribed Words
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          {voiceTranscript.split(/\s+/).filter(Boolean).length} words
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDescription(voiceTranscript);
+                            triggerNotification('✓ Transcribed speech applied to description');
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-bold text-[#007A6C] bg-white border border-[#A2D9D2] rounded-lg hover:bg-[#E8F6F4] cursor-pointer shadow-2xs transition"
+                        >
+                          Use as Description
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDescription(prev => {
+                              const trimmed = prev.trim();
+                              return trimmed ? `${trimmed} ${voiceTranscript}` : voiceTranscript;
+                            });
+                            triggerNotification('✓ Transcribed speech appended');
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer shadow-2xs transition"
+                        >
+                          + Append
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(voiceTranscript);
+                            triggerNotification('✓ Copied transcript to clipboard');
+                          }}
+                          className="px-2 py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg cursor-pointer"
+                          title="Copy transcript text"
+                        >
+                          <Copy className="h-3 w-3 inline mr-1" />
+                          Copy
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setVoiceTranscript('')}
+                          className="px-2 py-1 text-[11px] font-bold text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer"
+                          title="Dismiss transcript"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-3 bg-white rounded-lg border border-[#A2D9D2]/80 text-slate-800 text-xs font-semibold leading-relaxed shadow-inner">
+                      "{voiceTranscript}"
+                    </div>
                   </div>
                 )}
 

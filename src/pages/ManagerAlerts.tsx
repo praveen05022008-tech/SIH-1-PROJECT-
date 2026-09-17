@@ -1,5 +1,5 @@
 import { apiUrl } from '../config/api';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Bell, AlertTriangle, ShieldAlert, Clock, ArrowUpRight,
   CheckCircle2, XCircle, Filter, RefreshCw, Send, Eye,
@@ -31,112 +31,51 @@ export interface SafetyAlert {
   read: boolean;
 }
 
-const MOCK_ALERTS: SafetyAlert[] = [
-  {
-    id: 'ALT-101',
-    alertCode: 'SIF-CRIT-0141',
-    title: 'CRITICAL SIF PRECURSOR: Pressurized Gas Leak Flange Joint',
-    type: 'HIGH_SIF',
-    severity: 'CRITICAL',
-    site: 'Duliajan Field',
-    unit: 'Well Pad C-7',
-    timestamp: new Date(Date.now() - 35 * 60000).toISOString(),
-    description: 'AI model flagged 87.4% SIF probability. High-pressure methane cloud detected near active electrical cabinet. 3 personnel in direct blast radius.',
-    relatedReportCode: 'RPT-2024-0141',
-    barrierDetails: 'Primary Relief Valve failed; secondary combustible gas detector offline.',
-    status: 'ACTIVE',
-    read: false
-  },
-  {
-    id: 'ALT-102',
-    alertCode: 'BAR-FAIL-0098',
-    title: 'CRITICAL BARRIER FAILURE: Bypassed LOTO on High-Voltage Gas Compressor',
-    type: 'BARRIER_FAILURE',
-    severity: 'CRITICAL',
-    site: 'Jorhat Gas Station',
-    unit: 'Compressor Unit G-3',
-    timestamp: new Date(Date.now() - 110 * 60000).toISOString(),
-    description: 'Electrical disconnect box found unlocked with breaker energised during ongoing mechanical bearing replacement. Permit to Work violated.',
-    relatedReportCode: 'RPT-2024-0139',
-    barrierDetails: 'Padlock absent from energy isolation box. Danger tags not signed by lead electrician.',
-    status: 'ACTIVE',
-    read: false
-  },
-  {
-    id: 'ALT-103',
-    alertCode: 'OVD-TSK-0077',
-    title: 'OVERDUE INVESTIGATION: Fall Protection Violation at Tower T-4',
-    type: 'OVERDUE_INVESTIGATION',
-    severity: 'HIGH',
-    site: 'Numaligarh Refinery',
-    unit: 'Distillation Column T-4',
-    timestamp: new Date(Date.now() - 26 * 3600000).toISOString(),
-    description: 'Assigned investigation task TSK-102 is now 26 hours past deadline without officer field report submission.',
-    relatedReportCode: 'RPT-2024-0138',
-    assignedOfficer: 'Deepa Hazarika',
-    hoursOverdue: 26,
-    status: 'ACTIVE',
-    read: false
-  },
-  {
-    id: 'ALT-104',
-    alertCode: 'ESC-NOTIF-0045',
-    title: 'ESCALATION TO GENERAL MANAGER: Confined Space Toxic Gas Exceedance',
-    type: 'ESCALATION',
-    severity: 'CRITICAL',
-    site: 'Digboi Refinery',
-    unit: 'Crude Sludge Tank 08',
-    timestamp: new Date(Date.now() - 4 * 3600000).toISOString(),
-    description: 'H2S gas concentration measured at 24 ppm inside tank manway (Threshold limit: 10 ppm). Work was halted by field officer, awaiting managerial clearance.',
-    relatedReportCode: 'RPT-2024-0136',
-    assignedOfficer: 'Bipul Saikia',
-    barrierDetails: 'Forced mechanical ventilation fan stalled due to power fluctuation.',
-    status: 'ESCALATED',
-    read: true
-  },
-  {
-    id: 'ALT-105',
-    alertCode: 'BAR-FAIL-0092',
-    title: 'BARRIER INTEGRITY WARNING: Corrosion on Offshore Drill Line Anchor',
-    type: 'BARRIER_FAILURE',
-    severity: 'HIGH',
-    site: 'Duliajan Field',
-    unit: 'Drilling Rig 4',
-    timestamp: new Date(Date.now() - 8 * 3600000).toISOString(),
-    description: 'NDT ultrasound thickness check indicates 32% metal loss on dead-line anchor pin. Rated load capacity compromised.',
-    relatedReportCode: 'RPT-2024-0132',
-    barrierDetails: 'Mechanical engineered load safety factor reduced below 1.5x.',
-    status: 'ACTIVE',
-    read: true
-  },
-  {
-    id: 'ALT-106',
-    alertCode: 'SIF-HIGH-0115',
-    title: 'HIGH-SIF PRECURSOR: Mobile Crane Rigging Close to Overhead 33kV Line',
-    type: 'HIGH_SIF',
-    severity: 'HIGH',
-    site: 'Numaligarh Refinery',
-    unit: 'Offsite Storage Yard B',
-    timestamp: new Date(Date.now() - 14 * 3600000).toISOString(),
-    description: 'Crane boom approached within 2.1m of uninsulated power line during pipe transfer. Proximity sensor alarm sounded.',
-    relatedReportCode: 'RPT-2024-0129',
-    barrierDetails: 'Overhead electrical line proximity barrier near-miss.',
-    status: 'ACKNOWLEDGED',
-    read: true
-  }
-];
-
 export const ManagerAlerts: React.FC<ManagerAlertsProps> = ({
   user,
   triggerNotification,
   triggerStateRefresh
 }) => {
-  const [alerts, setAlerts] = useState<SafetyAlert[]>(MOCK_ALERTS);
+  const [alerts, setAlerts] = useState<SafetyAlert[]>([]);
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [selectedSeverity, setSelectedSeverity] = useState<string>('ALL');
-  const [selectedAlert, setSelectedAlert] = useState<SafetyAlert | null>(alerts[0]);
+  const [selectedAlert, setSelectedAlert] = useState<SafetyAlert | null>(null);
   const [escalationNote, setEscalationNote] = useState<string>('');
   const [showEscalateModal, setShowEscalateModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    fetch(apiUrl('/api/events'))
+      .then(res => res.ok ? res.json() : [])
+      .then((events: any[]) => {
+        if (Array.isArray(events) && events.length > 0) {
+          const dynamicAlerts: SafetyAlert[] = events.map((e, idx) => ({
+            id: `ALT-${e.id || idx}`,
+            alertCode: `SIF-${e.sif_potential?.toUpperCase() || 'WARN'}-${e.id || idx}`,
+            title: `${e.sif_potential || 'SIF'} Alert: ${e.hazard || e.hazard_category || 'Hazard Detected'}`,
+            type: e.sif_potential === 'Critical' ? 'HIGH_SIF' : 'BARRIER_FAILURE',
+            severity: e.sif_potential === 'Critical' ? 'CRITICAL' : (e.sif_potential === 'High' ? 'HIGH' : 'MEDIUM'),
+            site: e.site || 'Jamnagar Complex',
+            unit: e.unit || 'Unit 04 - FCCU',
+            timestamp: e.timestamp || new Date().toISOString(),
+            description: e.description || e.evidence || 'Operational safety observation requiring review.',
+            relatedReportCode: e.report_code || e.id,
+            assignedOfficer: e.assigned_officer_name || e.reviewer,
+            barrierDetails: e.barrier_failure || 'Barrier status under review.',
+            status: 'ACTIVE',
+            read: false
+          }));
+          setAlerts(dynamicAlerts);
+          if (dynamicAlerts.length > 0) setSelectedAlert(dynamicAlerts[0]);
+        } else {
+          setAlerts([]);
+          setSelectedAlert(null);
+        }
+      })
+      .catch(() => {
+        setAlerts([]);
+        setSelectedAlert(null);
+      });
+  }, [triggerStateRefresh]);
 
   // Filter alerts
   const filteredAlerts = useMemo(() => {

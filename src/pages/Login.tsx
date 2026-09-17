@@ -223,6 +223,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       if (response.ok) {
         setRegSuccess(`Registration submitted for ${regName}! Your account has been registered with status PENDING approval. The System Administrator will review and approve your account in the Admin Console before you can sign in.`);
         setRegName(''); setRegIdNumber(''); setRegEmail(''); setRegPassword(''); setRegPhone(''); setRegAddress(''); setRegRole('Employee');
+        setRegLoading(false);
         return;
       }
 

@@ -649,7 +649,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {/* 1C. ACTIVE SAFETY DIRECTIVES RIBBON (COMPANY-WIDE / TARGETED) */}
           {directives.length > 0 && (
             <div className="space-y-3">
-              {directives.slice(0, 2).map((dir) => {
+              {directives.slice(0, 2).map((dir, idx) => {
                 const isAcknowledged = acknowledgedDirIds.has(dir.directive_id) || dir.acknowledge_count > 0;
                 const isUrgent = dir.priority === 'URGENT';
                 const targetScope = dir.target_scope || 'ALL';
@@ -657,7 +657,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                 return (
                   <div
-                    key={dir.id}
+                    key={dir.directive_id || dir.id || `dir-ribbon-${idx}`}
                     className={`border rounded-2xl p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-3 transition ${isUrgent
                         ? 'bg-red-50 border-red-200 ring-1 ring-red-500/20'
                         : 'bg-amber-50/80 border-amber-200'
@@ -929,8 +929,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-hidden focus:border-[#008779] cursor-pointer"
                   >
                     <option value="ALL">All Sites ({uniqueSites.length})</option>
-                    {uniqueSites.map(s => (
-                      <option key={s} value={s}>{s}</option>
+                    {uniqueSites.map((s, idx) => (
+                      <option key={`${s}-${idx}`} value={s}>{s}</option>
                     ))}
                   </select>
                 )}
@@ -970,11 +970,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </td>
                       </tr>
                     ) : (
-                      filteredEvents.map((evt) => {
+                      filteredEvents.map((evt, idx) => {
                         const dateInfo = formatDate(evt.timestamp);
                         return (
                           <tr
-                            key={evt.id}
+                            key={evt.report_code || evt.id || `table-evt-${idx}`}
                             className="hover:bg-[#E8F6F4]/30 transition-colors duration-150 group"
                           >
                             {/* 1. Date & Time */}
@@ -1077,11 +1077,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </p>
                   </div>
                 ) : (
-                  filteredEvents.map((evt) => {
+                  filteredEvents.map((evt, idx) => {
                     const dateInfo = formatDate(evt.timestamp);
                     return (
                       <div
-                        key={evt.id}
+                        key={evt.report_code || evt.id || `card-evt-${idx}`}
                         className="p-4 bg-white border border-[#E6ECEB] hover:border-[#008779]/40 rounded-2xl transition-all duration-200 shadow-2xs hover:shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 group"
                       >
                         <div className="flex items-start gap-3.5 min-w-0">

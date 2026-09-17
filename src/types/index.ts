@@ -95,6 +95,8 @@ export interface SafetyEvent {
   evidence: string;
   
   // SIF-SHIELD 0-10 Composite Scoring Engine
+  risk_score?: number;
+  raw_text?: string;
   severity_score?: number;
   exposure_score?: number;
   barrier_score?: number;
@@ -116,6 +118,9 @@ export interface SafetyEvent {
   
   // Operational Hierarchy (L1-L6)
   l1_milestone: string;
+  assigned_officer_id?: number | null;
+  assigned_officer_name?: string | null;
+  assigned_to?: string | null;
   l2_unit: string;
   l3_discipline: string;
   l4_work_package: string;
@@ -212,6 +217,7 @@ export interface OfficerProfile {
   officer_name: string;
   name?: string;
   officer_code: string;
+  id_number?: string;
   employee_id?: string;
   email: string;
   phone: string;
@@ -243,6 +249,7 @@ export interface OfficerTask {
   assigned_officer_id: number;
   assigned_officer_name: string;
   assigned_officer_email?: string | null;
+  assigned_to?: string | null;
   assigned_by: string;
   instructions: string;
   status: 'Assigned' | 'In Progress' | 'Submitted' | 'Completed' | 'Overdue' | string;

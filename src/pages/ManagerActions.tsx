@@ -13,77 +13,6 @@ interface ManagerActionsProps {
   triggerStateRefresh: boolean;
 }
 
-const MOCK_TASKS: OfficerTask[] = [
-  {
-    id: 1, task_id: 'TSK-101',
-    title: 'Investigate Pressurized Line Leak at Well Pad C-7',
-    task_type: 'Field Investigation',
-    site: 'Duliajan Field', unit: 'Well Pad C-7',
-    priority: 'CRITICAL',
-    assigned_officer_id: 1,
-    assigned_officer_name: 'Ranjit Phukan',
-    assigned_by: 'Mgr. Rajesh Bora',
-    instructions: 'Conduct immediate field inspection of the reported pressurized pipeline leak.',
-    status: 'Completed',
-    due_date: new Date(Date.now() - 86400000).toISOString(),
-    findings: 'Found corroded relief valve at flange joint F-14. Gas cloud confirmed. Isolation initiated. Photo evidence collected. Root cause: corrosion-induced seal failure. Recommended: immediate valve replacement and quarterly inspection schedule.',
-    related_event_id: 'EVT-001',
-    created_at: new Date(Date.now() - 7200000 * 5).toISOString(),
-    completed_at: new Date(Date.now() - 3600000).toISOString()
-  },
-  {
-    id: 2, task_id: 'TSK-102',
-    title: 'Audit Fall Protection Compliance at Refinery Tower T-4',
-    task_type: 'Safety Audit',
-    site: 'Numaligarh Refinery', unit: 'Tower T-4',
-    priority: 'HIGH',
-    assigned_officer_id: 2,
-    assigned_officer_name: 'Deepa Hazarika',
-    assigned_by: 'Mgr. Priya Hazarika',
-    instructions: 'Verify all personnel working above 2m have double-lanyard harnesses attached.',
-    status: 'In Progress',
-    due_date: new Date(Date.now() + 172800000).toISOString(),
-    findings: 'Initial inspection found 2 workers without proper anchor hook. Corrective briefing issued on-site.',
-    related_event_id: 'EVT-002',
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-    completed_at: null
-  },
-  {
-    id: 3, task_id: 'TSK-103',
-    title: 'Energy Isolation Verification – Gas Compressor Station G-3',
-    task_type: 'LOTO Verification',
-    site: 'Jorhat Gas Station', unit: 'Compressor Station G-3',
-    priority: 'HIGH',
-    assigned_officer_id: 3,
-    assigned_officer_name: 'Mridul Bora',
-    assigned_by: 'Mgr. Rajesh Bora',
-    instructions: 'Verify complete LOTO before maintenance resumes.',
-    status: 'Assigned',
-    due_date: new Date(Date.now() + 86400000).toISOString(),
-    findings: null,
-    related_event_id: 'EVT-003',
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-    completed_at: null
-  },
-  {
-    id: 4, task_id: 'TSK-104',
-    title: 'Ground-Level Safety Inspection at Digboi CDU',
-    task_type: 'Compliance Inspection',
-    site: 'Digboi Refinery', unit: 'CDU Unit',
-    priority: 'MEDIUM',
-    assigned_officer_id: 1,
-    assigned_officer_name: 'Ranjit Phukan',
-    assigned_by: 'Mgr. Rajesh Bora',
-    instructions: 'Walk-through inspection of all CDU work areas. Check PPE compliance and housekeeping.',
-    status: 'Overdue',
-    due_date: new Date(Date.now() - 172800000).toISOString(),
-    findings: null,
-    related_event_id: null,
-    created_at: new Date(Date.now() - 86400000 * 4).toISOString(),
-    completed_at: null
-  }
-];
-
 const STATUS_COLORS: Record<string, string> = {
   Assigned: 'bg-amber-50 text-amber-700 border-amber-200',
   'In Progress': 'bg-blue-50 text-blue-700 border-blue-200',
@@ -115,9 +44,9 @@ export const ManagerActions: React.FC<ManagerActionsProps> = ({
       const res = await fetch(apiUrl('/api/manager/tasks'));
       let loaded: OfficerTask[] = [];
       if (res.ok) { const d = await res.json(); loaded = Array.isArray(d) ? d : []; }
-      setTasks(loaded.length > 0 ? loaded : MOCK_TASKS);
+      setTasks(loaded);
     } catch {
-      setTasks(MOCK_TASKS);
+      setTasks([]);
     } finally {
       setLoading(false);
     }

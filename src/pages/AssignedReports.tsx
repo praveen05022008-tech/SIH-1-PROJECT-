@@ -55,104 +55,6 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
   const [recheckFindings, setRecheckFindings] = useState('');
   const [submittingRecheck, setSubmittingRecheck] = useState(false);
 
-  const MOCK_TASKS: OfficerTask[] = [
-    {
-      id: 1,
-      task_id: 'TSK-101',
-      title: 'Investigate Pressurized Line Leak at Well Pad C-7',
-      task_type: 'Field Investigation',
-      site: 'Duliajan Field',
-      unit: 'Well Pad C-7',
-      priority: 'CRITICAL',
-      assigned_officer_id: 1,
-      assigned_officer_name: user?.name || 'Safety Officer',
-      assigned_by: 'Mgr. Rajesh Bora',
-      instructions: 'Conduct immediate field inspection of the reported pressurized pipeline leak. Document the barrier failure, identify root cause, and initiate stop-work if personnel are in the line of fire. Upload photographic evidence.',
-      status: 'Assigned',
-      due_date: new Date(Date.now() + 86400000).toISOString(),
-      findings: null,
-      related_event_id: 'EVT-001',
-      created_at: new Date(Date.now() - 7200000).toISOString(),
-      completed_at: null
-    },
-    {
-      id: 2,
-      task_id: 'TSK-102',
-      title: 'Audit Fall Protection Compliance at Refinery Tower T-4',
-      task_type: 'Safety Audit',
-      site: 'Numaligarh Refinery',
-      unit: 'Tower T-4',
-      priority: 'HIGH',
-      assigned_officer_id: 1,
-      assigned_officer_name: user?.name || 'Safety Officer',
-      assigned_by: 'Mgr. Priya Hazarika',
-      instructions: 'Verify all personnel working above 2m have double-lanyard harnesses attached to rated anchor points. Check permit-to-work documentation. Document non-compliances.',
-      status: 'In Progress',
-      due_date: new Date(Date.now() + 172800000).toISOString(),
-      findings: 'Initial inspection found 2 workers without proper anchor hook. Corrective briefing issued.',
-      related_event_id: 'EVT-002',
-      created_at: new Date(Date.now() - 86400000).toISOString(),
-      completed_at: null
-    },
-    {
-      id: 3,
-      task_id: 'TSK-103',
-      title: 'Energy Isolation Verification – Gas Compressor Station G-3',
-      task_type: 'LOTO Verification',
-      site: 'Jorhat Gas Station',
-      unit: 'Compressor Station G-3',
-      priority: 'HIGH',
-      assigned_officer_id: 1,
-      assigned_officer_name: user?.name || 'Safety Officer',
-      assigned_by: 'Mgr. Rajesh Bora',
-      instructions: 'Verify that all 6 LOTO points are correctly applied and tagged before maintenance crew starts work on the compressor manifold. Cross-check with PTW. Confirm zero energy state.',
-      status: 'Assigned',
-      due_date: new Date(Date.now() + 43200000).toISOString(),
-      findings: null,
-      related_event_id: 'EVT-003',
-      created_at: new Date(Date.now() - 3600000).toISOString(),
-      completed_at: null
-    },
-    {
-      id: 4,
-      task_id: 'TSK-104',
-      title: 'Chemical Spill Root-Cause Assessment – Tank Farm Area',
-      task_type: 'Incident Investigation',
-      site: 'Digboi Refinery',
-      unit: 'Tank Farm – Zone B',
-      priority: 'MEDIUM',
-      assigned_officer_id: 1,
-      assigned_officer_name: user?.name || 'Safety Officer',
-      assigned_by: 'Mgr. Suresh Gogoi',
-      instructions: 'Investigate small chemical overfill incident from Tank B-12. Identify cause, document observations, and submit corrective recommendations within 48 hours.',
-      status: 'Completed',
-      due_date: new Date(Date.now() - 86400000).toISOString(),
-      findings: 'Root cause: Level sensor malfunction combined with manual override. Recommended: sensor replacement and double-check valve installation.',
-      related_event_id: 'EVT-004',
-      created_at: new Date(Date.now() - 259200000).toISOString(),
-      completed_at: new Date(Date.now() - 86400000).toISOString()
-    },
-    {
-      id: 5,
-      task_id: 'TSK-105',
-      title: 'Hot Work Permit Spot-Check – Pipeline Welding Crew',
-      task_type: 'Permit Verification',
-      site: 'Barauni Field',
-      unit: 'Pipeline ROW – KM 24',
-      priority: 'MEDIUM',
-      assigned_officer_id: 1,
-      assigned_officer_name: user?.name || 'Safety Officer',
-      assigned_by: 'Mgr. Priya Hazarika',
-      instructions: 'Conduct unannounced spot check on hot-work permit validity, fire extinguisher availability, and gas-free certification for ongoing pipeline welding operations.',
-      status: 'Assigned',
-      due_date: new Date(Date.now() + 259200000).toISOString(),
-      findings: null,
-      related_event_id: null,
-      created_at: new Date(Date.now() - 1800000).toISOString(),
-      completed_at: null
-    }
-  ];
-
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -160,6 +62,8 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
         fetch(apiUrl('/api/manager/tasks'), {
           headers: {
             'X-User-Email': user?.email || '',
+            'X-User-Id': String(user?.id || ''),
+            'X-User-Role': user?.role || '',
           }
         }),
         fetch(apiUrl('/api/events'))
@@ -299,15 +203,20 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
     if (!isOfficer) return tasks;
     const uName = (user?.name || '').toLowerCase().trim();
     const uEmail = (user?.email || '').toLowerCase().trim();
+    const uId = user?.id ? String(user.id) : '';
 
     return tasks.filter(task => {
-      const tName = (task.assigned_officer_name || '').toLowerCase().trim();
-      const tEmail = ((task as any).assigned_officer_email || '').toLowerCase().trim();
+      const tId = task.assigned_officer_id ? String(task.assigned_officer_id) : '';
+      if (uId && tId && uId === tId) return true;
+
+      const tEmail = ((task as any).assigned_officer_email || (task as any).officer_email || '').toLowerCase().trim();
       if (uEmail && tEmail && uEmail === tEmail) return true;
-      if (uName && tName) {
-        return tName.includes(uName) || uName.includes(tName);
+
+      const tName = (task.assigned_officer_name || task.assigned_to || '').toLowerCase().trim();
+      if (uName && tName && (tName.includes(uName) || uName.includes(tName))) {
+        return true;
       }
-      return true;
+      return false;
     });
   }, [tasks, user, isOfficer]);
 

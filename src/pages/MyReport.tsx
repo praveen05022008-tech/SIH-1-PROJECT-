@@ -173,7 +173,7 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
         const stored = localStorage.getItem('raksha_auth_user');
         if (stored) return JSON.parse(stored).email;
       } catch {}
-      return 'srinith@gmail.com';
+      return '';
     })();
     if (!targetEmail) return;
     setLoading(true);
@@ -287,149 +287,139 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
         </div>
       )}
 
-      {/* TOP HEADER (Clean white layout matching Picture 1) */}
+      {/* TOP HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">
-            My Safety Reports
-          </h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900">
+              My Safety Reports
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#E8F6F4] text-[#007A6C] border border-[#A2D9D2]">
+              {reports.length} Total
+            </span>
+          </div>
           <p className="text-xs text-slate-500 mt-1 font-medium">
-            All safety observations and incident reports submitted by you.
+            Review and track all safety observations and incident reports submitted by your account.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Total Reports Stat Badge */}
-          <div className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-center shadow-2xs">
-            <div className="text-xl font-black text-slate-900 leading-tight">
-              {reports.length}
-            </div>
-            <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
-              Total Reports
-            </div>
-          </div>
-
-          {/* + Report Safety Issue Button */}
-          {onNavigateTo && (
-            <button
-              onClick={() => onNavigateTo('report-issue')}
-              className="px-4 py-2.5 rounded-xl bg-[#005B54] hover:bg-[#004A44] text-white font-bold text-xs shadow-sm flex items-center gap-2 transition cursor-pointer"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Report Safety Issue</span>
-            </button>
-          )}
-        </div>
+        {onNavigateTo && (
+          <button
+            onClick={() => onNavigateTo('report-issue')}
+            className="self-start sm:self-auto px-4 py-2.5 rounded-xl bg-[#00695C] hover:bg-[#00574B] text-white font-bold text-xs shadow-sm flex items-center gap-2 transition cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Report Safety Issue</span>
+          </button>
+        )}
       </div>
 
-      {/* 4 STATUS METRIC CARDS STRIP (Matching Picture 1 with 2-digit counts & bottom underline bars) */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-5">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
-          
-          {/* 1. Needs Review */}
-          <div
-            onClick={() => setStatusFilter(prev => (prev === 'REVIEW' ? 'ALL' : 'REVIEW'))}
-            className={`pt-2 lg:pt-0 lg:px-4 cursor-pointer select-none transition group ${
-              statusFilter === 'REVIEW' ? 'opacity-100' : 'hover:opacity-90'
-            }`}
-          >
-            <div className="flex items-center gap-3.5">
-              <div className="h-11 w-11 rounded-2xl bg-[#FFFBEB] text-amber-500 flex items-center justify-center shrink-0">
-                <FileText className="h-5 w-5" />
+      {/* 4 STATUS METRIC CARDS STRIP */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        
+        {/* 1. Needs Review */}
+        <div
+          onClick={() => setStatusFilter(prev => (prev === 'REVIEW' ? 'ALL' : 'REVIEW'))}
+          className={`p-4 rounded-2xl border transition cursor-pointer select-none bg-white shadow-2xs hover:shadow-xs flex items-center justify-between ${
+            statusFilter === 'REVIEW'
+              ? 'border-amber-400 ring-2 ring-amber-400/20 bg-amber-50/20'
+              : 'border-slate-200/80 hover:border-slate-300'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200/60">
+              <FileText className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xl font-black text-slate-900 leading-tight">
+                {String(needsReviewCount).padStart(2, '0')}
               </div>
-              <div>
-                <div className="text-2xl font-black text-slate-900 leading-tight">
-                  {String(needsReviewCount).padStart(2, '0')}
-                </div>
-                <div className="text-xs text-slate-500 font-semibold mt-0.5">
-                  Needs Review
-                </div>
+              <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                Needs Review
               </div>
             </div>
-            <div className={`h-1 rounded-full mt-3.5 transition-all ${
-              statusFilter === 'REVIEW' ? 'w-16 bg-amber-500' : 'w-12 bg-amber-500/80 group-hover:w-16'
-            }`} />
           </div>
-
-          {/* 2. In Progress */}
-          <div
-            onClick={() => setStatusFilter(prev => (prev === 'PROGRESS' ? 'ALL' : 'PROGRESS'))}
-            className={`pt-3 lg:pt-0 lg:px-4 cursor-pointer select-none transition group ${
-              statusFilter === 'PROGRESS' ? 'opacity-100' : 'hover:opacity-90'
-            }`}
-          >
-            <div className="flex items-center gap-3.5">
-              <div className="h-11 w-11 rounded-2xl bg-[#EFF6FF] text-blue-500 flex items-center justify-center shrink-0">
-                <History className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-2xl font-black text-slate-900 leading-tight">
-                  {String(inProgressCount).padStart(2, '0')}
-                </div>
-                <div className="text-xs text-slate-500 font-semibold mt-0.5">
-                  In Progress
-                </div>
-              </div>
-            </div>
-            <div className={`h-1 rounded-full mt-3.5 transition-all ${
-              statusFilter === 'PROGRESS' ? 'w-16 bg-blue-500' : 'w-12 bg-blue-500/80 group-hover:w-16'
-            }`} />
-          </div>
-
-          {/* 3. Confirmed */}
-          <div
-            onClick={() => setStatusFilter(prev => (prev === 'CONFIRMED' ? 'ALL' : 'CONFIRMED'))}
-            className={`pt-3 lg:pt-0 lg:px-4 cursor-pointer select-none transition group ${
-              statusFilter === 'CONFIRMED' ? 'opacity-100' : 'hover:opacity-90'
-            }`}
-          >
-            <div className="flex items-center gap-3.5">
-              <div className="h-11 w-11 rounded-2xl bg-[#FAF5FF] text-purple-500 flex items-center justify-center shrink-0">
-                <Shield className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-2xl font-black text-slate-900 leading-tight">
-                  {String(confirmedCount).padStart(2, '0')}
-                </div>
-                <div className="text-xs text-slate-500 font-semibold mt-0.5">
-                  Confirmed
-                </div>
-              </div>
-            </div>
-            <div className={`h-1 rounded-full mt-3.5 transition-all ${
-              statusFilter === 'CONFIRMED' ? 'w-16 bg-purple-500' : 'w-12 bg-purple-500/80 group-hover:w-16'
-            }`} />
-          </div>
-
-          {/* 4. Resolved */}
-          <div
-            onClick={() => setStatusFilter(prev => (prev === 'RESOLVED' ? 'ALL' : 'RESOLVED'))}
-            className={`pt-3 lg:pt-0 lg:px-4 cursor-pointer select-none transition group ${
-              statusFilter === 'RESOLVED' ? 'opacity-100' : 'hover:opacity-90'
-            }`}
-          >
-            <div className="flex items-center gap-3.5">
-              <div className="h-11 w-11 rounded-2xl bg-[#ECFDF5] text-emerald-500 flex items-center justify-center shrink-0">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-2xl font-black text-slate-900 leading-tight">
-                  {String(resolvedCount).padStart(2, '0')}
-                </div>
-                <div className="text-xs text-slate-500 font-semibold mt-0.5">
-                  Resolved
-                </div>
-              </div>
-            </div>
-            <div className={`h-1 rounded-full mt-3.5 transition-all ${
-              statusFilter === 'RESOLVED' ? 'w-16 bg-emerald-500' : 'w-12 bg-emerald-500/80 group-hover:w-16'
-            }`} />
-          </div>
-
+          <span className="h-2 w-2 rounded-full bg-amber-500" />
         </div>
+
+        {/* 2. In Progress */}
+        <div
+          onClick={() => setStatusFilter(prev => (prev === 'PROGRESS' ? 'ALL' : 'PROGRESS'))}
+          className={`p-4 rounded-2xl border transition cursor-pointer select-none bg-white shadow-2xs hover:shadow-xs flex items-center justify-between ${
+            statusFilter === 'PROGRESS'
+              ? 'border-blue-400 ring-2 ring-blue-400/20 bg-blue-50/20'
+              : 'border-slate-200/80 hover:border-slate-300'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-200/60">
+              <History className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xl font-black text-slate-900 leading-tight">
+                {String(inProgressCount).padStart(2, '0')}
+              </div>
+              <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                In Progress
+              </div>
+            </div>
+          </div>
+          <span className="h-2 w-2 rounded-full bg-blue-500" />
+        </div>
+
+        {/* 3. Confirmed */}
+        <div
+          onClick={() => setStatusFilter(prev => (prev === 'CONFIRMED' ? 'ALL' : 'CONFIRMED'))}
+          className={`p-4 rounded-2xl border transition cursor-pointer select-none bg-white shadow-2xs hover:shadow-xs flex items-center justify-between ${
+            statusFilter === 'CONFIRMED'
+              ? 'border-purple-400 ring-2 ring-purple-400/20 bg-purple-50/20'
+              : 'border-slate-200/80 hover:border-slate-300'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-200/60">
+              <Shield className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xl font-black text-slate-900 leading-tight">
+                {String(confirmedCount).padStart(2, '0')}
+              </div>
+              <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                Confirmed
+              </div>
+            </div>
+          </div>
+          <span className="h-2 w-2 rounded-full bg-purple-500" />
+        </div>
+
+        {/* 4. Resolved */}
+        <div
+          onClick={() => setStatusFilter(prev => (prev === 'RESOLVED' ? 'ALL' : 'RESOLVED'))}
+          className={`p-4 rounded-2xl border transition cursor-pointer select-none bg-white shadow-2xs hover:shadow-xs flex items-center justify-between ${
+            statusFilter === 'RESOLVED'
+              ? 'border-emerald-400 ring-2 ring-emerald-400/20 bg-emerald-50/20'
+              : 'border-slate-200/80 hover:border-slate-300'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-200/60">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xl font-black text-slate-900 leading-tight">
+                {String(resolvedCount).padStart(2, '0')}
+              </div>
+              <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                Resolved
+              </div>
+            </div>
+          </div>
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+        </div>
+
       </div>
 
-      {/* SEARCH, STATUS DROPDOWN, FILTERS, REFRESH TOOLBAR */}
+      {/* SEARCH & FILTER TOOLBAR */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         {/* Search Input */}
         <div className="relative flex-1">
@@ -438,13 +428,13 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search by report code, keyword, category, location..."
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#005B54] focus:border-[#005B54] shadow-2xs font-medium"
+            placeholder="Search by report code, category, location, or observation..."
+            className="w-full bg-white border border-slate-200/90 rounded-xl pl-10 pr-8 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C] shadow-2xs font-medium"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
             >
               ✕
             </button>
@@ -456,87 +446,79 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="w-full sm:w-auto px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs focus:outline-none focus:ring-2 focus:ring-[#005B54] cursor-pointer appearance-none pr-9"
+            className="w-full sm:w-auto pl-3.5 pr-8 py-2 bg-white border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs focus:outline-none focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C] cursor-pointer appearance-none"
           >
-            <option value="ALL">Status: All Statuses</option>
-            <option value="REVIEW">Status: Needs Review ({needsReviewCount})</option>
-            <option value="PROGRESS">Status: In Progress ({inProgressCount})</option>
-            <option value="CONFIRMED">Status: Confirmed ({confirmedCount})</option>
-            <option value="RESOLVED">Status: Resolved ({resolvedCount})</option>
+            <option value="ALL">All Statuses ({reports.length})</option>
+            <option value="REVIEW">Needs Review ({needsReviewCount})</option>
+            <option value="PROGRESS">In Progress ({inProgressCount})</option>
+            <option value="CONFIRMED">Confirmed ({confirmedCount})</option>
+            <option value="RESOLVED">Resolved ({resolvedCount})</option>
           </select>
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
-            ▼
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+            <Filter className="h-3 w-3" />
           </div>
         </div>
 
-        {/* Filters Button */}
-        <button
-          onClick={() => {
-            if (statusFilter !== 'ALL' || searchQuery) {
+        {/* Clear Filters Button */}
+        {(statusFilter !== 'ALL' || searchQuery) && (
+          <button
+            onClick={() => {
               setStatusFilter('ALL');
               setSearchQuery('');
-            }
-          }}
-          className={`px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold shadow-2xs flex items-center justify-center gap-2 transition cursor-pointer shrink-0 ${
-            statusFilter !== 'ALL' || searchQuery ? 'text-[#005B54] border-[#005B54]' : 'text-slate-700 hover:bg-slate-50'
-          }`}
-        >
-          <Filter className="h-3.5 w-3.5" />
-          <span>Filters</span>
-          {(statusFilter !== 'ALL' || searchQuery) && (
-            <span className="h-1.5 w-1.5 rounded-full bg-[#005B54]"></span>
-          )}
-        </button>
+            }}
+            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold shadow-2xs transition cursor-pointer shrink-0"
+          >
+            Reset Filters
+          </button>
+        )}
 
         {/* Refresh Button */}
         <button
           onClick={fetchMyReports}
           disabled={loading}
-          className="px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs flex items-center justify-center gap-2 transition cursor-pointer shrink-0"
+          className="px-3.5 py-2 bg-white border border-slate-200/90 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-3.5 w-3.5 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
           <span>Refresh</span>
         </button>
       </div>
 
       {/* TABLE CARD CONTAINER */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden space-y-1">
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
         
         {/* Card Header inside Table */}
-        <div className="px-6 py-4 border-b border-slate-100">
-          <div className="flex items-center gap-2 text-slate-900">
-            <div className="h-6 w-6 rounded-lg bg-[#ECFDF5] text-[#005B54] flex items-center justify-center">
-              <FileText className="h-3.5 w-3.5" />
-            </div>
-            <h2 className="text-xs font-black uppercase tracking-wider">
-              Personal Observation History
+        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[#008779]" />
+            <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">
+              Observation History
             </h2>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1 font-medium">
-            Showing {filteredReports.length} of {reports.length} reports submitted by {user.email}
-          </p>
+          <span className="text-[11px] text-slate-400 font-medium">
+            Showing {filteredReports.length} of {reports.length} reports
+          </span>
         </div>
 
         {/* The Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#F8FAFC] border-b border-slate-100 text-[10px] font-black uppercase tracking-wider text-slate-400">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="bg-slate-50/80 border-b border-slate-200/80 text-[10px] font-black uppercase tracking-wider text-slate-400">
               <tr>
-                <th className="py-3 px-6">REPORT CODE</th>
-                <th className="py-3 px-4">SUBMITTED ON</th>
-                <th className="py-3 px-4">CATEGORY / HAZARD</th>
+                <th className="py-3 px-5 whitespace-nowrap">REPORT CODE</th>
+                <th className="py-3 px-4 whitespace-nowrap">SUBMITTED ON</th>
+                <th className="py-3 px-4">HAZARD / CATEGORY</th>
                 <th className="py-3 px-4">LOCATION</th>
-                <th className="py-3 px-4">SIF SCORE</th>
-                <th className="py-3 px-4">STATUS</th>
-                <th className="py-3 px-4 text-center">EVIDENCE</th>
-                <th className="py-3 px-4 text-center">ACTION</th>
+                <th className="py-3 px-4 whitespace-nowrap">SIF SCORE</th>
+                <th className="py-3 px-4 whitespace-nowrap">STATUS</th>
+                <th className="py-3 px-4 text-center whitespace-nowrap">PHOTO</th>
+                <th className="py-3 px-5 text-right whitespace-nowrap">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
               {loading ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-slate-400">
-                    <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-[#005B54]" />
+                    <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-[#008779]" />
                     <span>Loading reports...</span>
                   </td>
                 </tr>
@@ -561,8 +543,10 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
                   const isAction = s.includes('action') || s.includes('dispatch') || s.includes('progress') || s.includes('investigat');
                   const isReview = s.includes('review') || s === 'pending';
 
-                  const score = report.sif_risk_score ?? 2.3;
-                  const isHigh = score >= 6.5 || (report.risk_level || '').toUpperCase() === 'CRITICAL' || (report.risk_level || '').toUpperCase() === 'HIGH';
+                  const rawScore = report.sif_risk_score ?? (report.risk_score != null ? (report.risk_score > 10 ? report.risk_score / 10 : report.risk_score) : (report.severity_score ?? 2.5));
+                  const score = Number(rawScore) || 2.5;
+                  const potential = (report.sif_potential || (score >= 6.5 ? 'HIGH' : score >= 4.0 ? 'MEDIUM' : 'LOW')).toUpperCase();
+                  const isHigh = potential === 'CRITICAL' || potential === 'HIGH' || score >= 6.5;
 
                   const dateObj = new Date(report.timestamp);
                   const dateFormatted = dateObj.toLocaleDateString('en-GB', {
@@ -577,92 +561,85 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
                   });
 
                   return (
-                    <tr key={report.id} className="hover:bg-slate-50/60 transition">
+                    <tr key={report.id} className="hover:bg-slate-50/80 transition">
                       
                       {/* REPORT CODE */}
-                      <td className="py-3.5 px-6">
-                        <div className="font-extrabold text-slate-900 font-mono text-xs">
+                      <td className="py-3 px-5 whitespace-nowrap">
+                        <span className="font-mono font-bold text-slate-900 text-xs tracking-tight bg-slate-100 px-2 py-0.5 rounded border border-slate-200/80">
                           {formatReportCode(report.report_code, report.id)}
-                        </div>
-                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                          {report.id}
-                        </div>
+                        </span>
                       </td>
 
                       {/* SUBMITTED ON */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-slate-700 font-semibold">
-                          <Calendar className="h-3 w-3 text-slate-400 shrink-0" />
-                          <span>{dateFormatted}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5 font-medium">
-                          <Clock className="h-2.5 w-2.5 shrink-0" />
-                          <span>{timeFormatted}</span>
-                        </div>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="text-slate-800 font-bold text-xs">{dateFormatted}</div>
+                        <div className="text-[10px] text-slate-400 font-medium">{timeFormatted}</div>
                       </td>
 
                       {/* CATEGORY / HAZARD */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-4">
                         <div className="font-bold text-slate-900 text-xs">
-                          {report.hazard_category || report.life_saving_rule || report.report_type || 'Unsafe Condition'}
+                          {report.hazard_category || report.hazard || report.report_type || 'Unsafe Condition'}
                         </div>
-                        <div className="text-[11px] text-slate-400 font-medium mt-0.5">
-                          {report.report_type || 'General'}
+                        <div className="text-[11px] text-slate-400 font-medium truncate max-w-[200px]">
+                          {report.description || report.raw_text || 'Field observation'}
                         </div>
                       </td>
 
                       {/* LOCATION */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-1 text-slate-700 font-semibold text-xs">
-                          <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
-                          <span>{report.site || 'Drilling Site A'}</span>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1 text-slate-800 font-semibold text-xs">
+                          <MapPin className="h-3 w-3 text-[#007A6C] shrink-0" />
+                          <span>{report.site || 'Site Alpha - Jamnagar'}</span>
                         </div>
-                        <div className="text-[11px] text-slate-400 font-medium mt-0.5 pl-4 truncate max-w-xs">
-                          {report.unit || 'Rig Floor 01'} {report.location_detail ? `• ${report.location_detail}` : ''}
+                        <div className="text-[11px] text-slate-400 font-medium truncate max-w-xs pl-4">
+                          {report.unit || 'Unit 04 - FCCU'}
                         </div>
                       </td>
 
                       {/* SIF SCORE */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-black tracking-wider uppercase ${
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase border ${
                           isHigh
-                            ? 'bg-[#FEF2F2] text-rose-700'
-                            : 'bg-[#ECFDF5] text-emerald-700'
+                            ? 'bg-rose-50 text-rose-800 border-rose-200'
+                            : score >= 4.0
+                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                            : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                         }`}>
-                          {isHigh ? 'HIGH' : 'LOW'} • {score.toFixed(1)}
+                          {potential} • {score.toFixed(1)}
                         </span>
                       </td>
 
                       {/* STATUS */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         {isReview && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-extrabold bg-[#FFFBEB] text-amber-800 border border-amber-200/70">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                             Needs Review
                           </span>
                         )}
                         {isAction && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-extrabold bg-[#EFF6FF] text-blue-700 border border-blue-200/70">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
                             Action Dispatched
                           </span>
                         )}
                         {isClosed && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-extrabold bg-[#ECFDF5] text-emerald-800 border border-emerald-200/70">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                             Resolved
                           </span>
                         )}
                         {!isReview && !isAction && !isClosed && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[10px] font-extrabold bg-slate-100 text-slate-700">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700">
                             {report.status}
                           </span>
                         )}
                       </td>
 
                       {/* EVIDENCE */}
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
                         {report.photo_url ? (
                           <button
                             onClick={() => setPreviewPhoto(report.photo_url || null)}
-                            className="inline-flex items-center justify-center p-1 rounded-lg border border-slate-200 hover:border-slate-300 hover:scale-105 transition cursor-pointer"
+                            className="inline-flex items-center justify-center p-0.5 rounded-lg border border-slate-200 hover:border-[#008779] transition cursor-pointer"
                             title="View Photo Evidence"
                           >
                             <img
@@ -676,83 +653,30 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
                         )}
                       </td>
 
-                      {/* ACTION (Eye, Pencil, Trash2, and More button) */}
-                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1.5 relative">
+                      {/* ACTIONS */}
+                      <td className="py-3 px-5 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1 justify-end">
                           <button
                             onClick={() => setSelectedReport(report)}
                             title="View Details"
-                            className="p-1.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition cursor-pointer"
+                            className="p-1.5 rounded-lg hover:bg-[#E8F6F4] text-slate-600 hover:text-[#007A6C] transition cursor-pointer"
                           >
                             <Eye className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => handleOpenEdit(report)}
                             title="Edit Observation"
-                            className="p-1.5 rounded-lg border border-blue-200 bg-blue-50/60 hover:bg-blue-100 text-blue-600 hover:text-blue-800 transition cursor-pointer"
+                            className="p-1.5 rounded-lg hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition cursor-pointer"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => setReportToDelete(report)}
                             title="Delete Report"
-                            className="p-1.5 rounded-lg border border-red-200 bg-red-50/60 hover:bg-red-100 text-red-600 hover:text-red-800 transition cursor-pointer"
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-slate-600 hover:text-red-600 transition cursor-pointer"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
-
-                          {/* Popover Dropdown Menu */}
-                          <div className="relative">
-                            <button
-                              onClick={() => setMenuOpenId(menuOpenId === report.id ? null : report.id)}
-                              title="More Actions"
-                              className="p-1.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition cursor-pointer"
-                            >
-                              <MoreVertical className="h-3.5 w-3.5" />
-                            </button>
-
-                            {menuOpenId === report.id && (
-                              <>
-                                <div 
-                                  className="fixed inset-0 z-20" 
-                                  onClick={() => setMenuOpenId(null)} 
-                                />
-                                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30 text-left animate-in fade-in zoom-in-95">
-                                  <button
-                                    onClick={() => {
-                                      setSelectedReport(report);
-                                      setMenuOpenId(null);
-                                    }}
-                                    className="w-full px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                                  >
-                                    <Eye className="h-3.5 w-3.5 text-slate-400" />
-                                    <span>View Details</span>
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      handleOpenEdit(report);
-                                      setMenuOpenId(null);
-                                    }}
-                                    className="w-full px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 flex items-center gap-2 cursor-pointer"
-                                  >
-                                    <Pencil className="h-3.5 w-3.5 text-blue-500" />
-                                    <span>Edit Observation</span>
-                                  </button>
-                                  <div className="border-t border-slate-100 my-1" />
-                                  <button
-                                    onClick={() => {
-                                      setReportToDelete(report);
-                                      setMenuOpenId(null);
-                                    }}
-                                    className="w-full px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                                    <span>Delete Permanently</span>
-                                  </button>
-                                </div>
-                              </>
-                            )}
-                          </div>
                         </div>
                       </td>
 
@@ -765,19 +689,19 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
         </div>
 
         {/* TABLE FOOTER & PAGINATION */}
-        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
+        <div className="px-5 py-3 bg-slate-50/60 border-t border-slate-100 flex items-center justify-between">
           <span className="text-xs text-slate-400 font-medium">
             Showing 1 to {filteredReports.length} of {reports.length} reports
           </span>
 
           <div className="flex items-center gap-1">
-            <button className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-50 text-xs">
+            <button className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-white text-xs cursor-pointer">
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
-            <button className="h-7 w-7 rounded-lg bg-[#005B54] text-white flex items-center justify-center text-xs font-bold">
+            <button className="h-7 w-7 rounded-lg bg-[#00695C] text-white flex items-center justify-center text-xs font-bold">
               1
             </button>
-            <button className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-50 text-xs">
+            <button className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-white text-xs cursor-pointer">
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -815,25 +739,48 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
             <div className="space-y-3 text-xs">
               <div>
                 <span className="text-slate-400 font-medium">Description:</span>
-                <p className="text-slate-800 font-semibold mt-0.5">{selectedReport.description || 'No detailed description provided.'}</p>
+                <p className="text-slate-800 font-semibold mt-0.5">{selectedReport.description || selectedReport.raw_text || 'No detailed description provided.'}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
                 <div>
                   <span className="text-slate-400 font-medium">Category:</span>
-                  <div className="font-bold text-slate-800">{selectedReport.hazard_category || selectedReport.report_type}</div>
+                  <div className="font-bold text-slate-800">{selectedReport.hazard_category || selectedReport.hazard || selectedReport.report_type || 'Operational Hazard'}</div>
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium">Status:</span>
-                  <div className="font-bold text-slate-800">{selectedReport.status}</div>
+                  <div className="font-bold text-slate-800">{selectedReport.status || 'Pending Review'}</div>
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium">Location:</span>
-                  <div className="font-bold text-slate-800">{selectedReport.site} • {selectedReport.unit}</div>
+                  <div className="font-bold text-slate-800">{selectedReport.site || 'Site Alpha'} • {selectedReport.unit || 'Unit 04'}</div>
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium">SIF Risk Score:</span>
-                  <div className="font-bold text-slate-800">{(selectedReport.sif_risk_score ?? 0).toFixed(1)}</div>
+                  {(() => {
+                    const rawScore = selectedReport.sif_risk_score ?? (selectedReport.risk_score != null ? (selectedReport.risk_score > 10 ? selectedReport.risk_score / 10 : selectedReport.risk_score) : (selectedReport.severity_score ?? 2.5));
+                    const score = Number(rawScore) || 2.5;
+                    const potential = (selectedReport.sif_potential || (score >= 6.5 ? 'High' : score >= 4.0 ? 'Medium' : 'Low'));
+                    const isHigh = potential.toLowerCase() === 'critical' || potential.toLowerCase() === 'high' || score >= 6.5;
+
+                    return (
+                      <div className="font-bold text-slate-800 flex items-center gap-1.5 mt-0.5">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                          isHigh 
+                            ? 'bg-rose-100 text-rose-800 border border-rose-200' 
+                            : score >= 4.0 
+                            ? 'bg-amber-100 text-amber-800 border border-amber-200' 
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        }`}>
+                          {potential}
+                        </span>
+                        <span>{score.toFixed(1)} / 10.0</span>
+                        {selectedReport.risk_score != null && (
+                          <span className="text-slate-400 font-medium text-[10px]">({Number(selectedReport.risk_score).toFixed(1)}/100)</span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
