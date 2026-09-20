@@ -320,7 +320,7 @@ function App() {
     const isOfficer = user.role === 'Officer' || user.role === 'Safety Officer';
     const isManager = user.role === 'Manager' || user.role === 'Safety Manager';
     const employeeAllowed = ['dashboard', 'report-issue', 'worker-portal', 'my-report', 'learning'];
-    const managerOnlyPages = ['assign-officer', 'manager-analytics', 'manager-alerts', 'manager-actions'];
+    const managerOnlyPages = ['assign-officer', 'manager-analytics', 'manager-alerts', 'manager-actions', 're-check'];
 
     if (isEmployee && !employeeAllowed.includes(currentPage)) {
       setCurrentPage('dashboard');
@@ -471,26 +471,11 @@ function App() {
             />
           )}
 
-          {currentPage === 're-check' && (!['Officer', 'Safety Officer'].includes(user.role)) && (
+          {currentPage === 're-check' && (
             <ManagerRecheck
               user={user}
               triggerNotification={triggerNotification}
               triggerStateRefresh={triggerStateRefresh}
-            />
-          )}
-
-          {currentPage === 're-check' && ['Officer', 'Safety Officer'].includes(user.role) && (
-            <AssignedReports
-              user={user}
-              triggerNotification={triggerNotification}
-              triggerStateRefresh={triggerStateRefresh}
-              onNavigateTo={(page, event) => {
-                if (page === 'investigate' && event) {
-                  setSelectedEvent(event);
-                }
-                setCurrentPage(page);
-              }}
-              initialStatusFilter="Submitted"
             />
           )}
 

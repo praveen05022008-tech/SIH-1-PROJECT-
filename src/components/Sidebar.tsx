@@ -81,7 +81,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         return [
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { id: 'assigned-reports', label: 'Assigned Reports', icon: ClipboardCheck },
-          { id: 're-check', label: 'Re-Check', icon: CheckSquare },
           { id: 'investigate', label: 'Investigate', icon: Search },
           { id: 'sif', label: 'SIF Risk', icon: ShieldAlert },
           { id: 'ai-analysis', label: 'AI Analysis', icon: Cpu }

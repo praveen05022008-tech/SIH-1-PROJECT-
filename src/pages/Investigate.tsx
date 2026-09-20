@@ -5,8 +5,6 @@ import {
   MapPin, 
   Calendar, 
   Camera, 
-  Upload, 
-  AlertTriangle, 
   CheckCircle2, 
   ShieldAlert, 
   FileText, 
@@ -15,10 +13,12 @@ import {
   Send, 
   Check, 
   RotateCw, 
-  Layers, 
   X,
-  ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Flame,
+  ShieldCheck,
+  Building2,
+  AlertTriangle
 } from 'lucide-react';
 import { SafetyEvent, OfficerTask, User } from '../types';
 import { RiskBadge } from '../components/UIElements';
@@ -55,7 +55,6 @@ export const Investigate: React.FC<InvestigateProps> = ({
   const [correctiveAction, setCorrectiveAction] = useState(
     'Halt line activity until isolation verification is completed and dual barrier installed.'
   );
-  const [investigationStatus, setInvestigationStatus] = useState('In Progress');
 
   // Photo / Evidence state
   const [evidencePhotos, setEvidencePhotos] = useState<string[]>([]);
@@ -114,6 +113,7 @@ export const Investigate: React.FC<InvestigateProps> = ({
 
       if (isOfficer) {
         loadedTsks = loadedTsks.filter(t => {
+          if (t.officer_status === 'Rejected' || t.status === 'Rejected') return false;
           const tId = t.assigned_officer_id ? String(t.assigned_officer_id) : '';
           if (uId && tId && uId === tId) return true;
           const tEmail = ((t as any).assigned_officer_email || (t as any).officer_email || '').toLowerCase().trim();
@@ -137,7 +137,7 @@ export const Investigate: React.FC<InvestigateProps> = ({
 
       // If selectedEvent passed via prop, select it
       if (selectedEvent) {
-        const id = selectedEvent.id || selectedEvent.task_id || '';
+        const id = selectedEvent.task_id || selectedEvent.id || selectedEvent.report_code || '';
         setCurrentId(id);
         if (selectedEvent.findings) setFindings(selectedEvent.findings);
       } else if (loadedTsks.length > 0) {
@@ -158,9 +158,19 @@ export const Investigate: React.FC<InvestigateProps> = ({
     fetchCandidates();
   }, [triggerStateRefresh]);
 
+  // Sync when selectedEvent prop changes
+  useEffect(() => {
+    if (selectedEvent) {
+      const id = selectedEvent.task_id || selectedEvent.id || selectedEvent.report_code || '';
+      setCurrentId(id);
+      if (selectedEvent.findings) setFindings(selectedEvent.findings);
+      setSuccessSubmitted(false);
+    }
+  }, [selectedEvent]);
+
   // Find active event or task
-  const activeItem = events.find(e => e.id === currentId) || 
-                     tasks.find(t => t.task_id === currentId || t.id.toString() === currentId);
+  const activeItem = tasks.find(t => t.task_id === currentId || String(t.id) === currentId) ||
+                     events.find(e => e.id === currentId || e.report_code === currentId);
 
   // When active item changes, sync findings
   useEffect(() => {
@@ -208,41 +218,45 @@ export const Investigate: React.FC<InvestigateProps> = ({
   const handleSubmitInvestigation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!findings.trim()) {
-      triggerNotification('Please record your field findings and observations.');
+      triggerNotification('Please record your field observations and findings before submitting.');
       return;
     }
 
     setSubmitting(true);
     try {
-      // If task_id, update task
-      if (activeItem && 'task_id' in activeItem) {
-        await fetch(apiUrl(`/api/manager/tasks/${activeItem.task_id}`), {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            status: investigationStatus,
-            findings: `${findings} [Cause: ${rootCause}] [Remediation: ${correctiveAction}]`
-          })
-        });
-      }
+      const combinedFindings = `${findings.trim()}\n\n[Root Cause]: ${rootCause}\n[Contributing Factors]: ${selectedFactors.join(', ')}\n[Remediation Plan]: ${correctiveAction.trim()}`;
+      const targetTaskId = activeItem && 'task_id' in activeItem ? activeItem.task_id : currentId;
 
-      // If event, update review
+      // 1. Submit to task endpoint (marks status as Submitted for Manager review)
+      await fetch(apiUrl(`/api/officer/tasks/${targetTaskId}/submit-recheck`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          findings: combinedFindings,
+          officer_name: user?.name || 'Safety Officer Lead',
+          root_cause: rootCause,
+          corrective_actions: correctiveAction.trim(),
+          evidence_photos: evidencePhotos
+        })
+      });
+
+      // 2. Also update event review record if applicable
       const evtId = (activeItem as any)?.id || (activeItem as any)?.related_event_id || null;
       if (evtId) {
         await fetch(apiUrl(`/api/events/${evtId}/review`), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            status: investigationStatus === 'Completed' ? 'Confirmed' : 'In Progress',
-            remarks: `Field investigation by ${user?.name || 'Safety Officer'}: ${findings}. Root Cause: ${rootCause}. Required Action: ${correctiveAction}.`
+            status: 'Confirmed',
+            remarks: `Field investigation completed by ${user?.name || 'Safety Officer'}: ${findings}. Root Cause: ${rootCause}. Corrective Action: ${correctiveAction}.`
           })
         });
       }
 
-      triggerNotification(`✓ Investigation recorded and submitted for ${currentId}`);
+      triggerNotification(`✓ Investigation report for ${currentId} submitted successfully!`);
       setSuccessSubmitted(true);
     } catch {
-      triggerNotification(`✓ Investigation saved locally for ${currentId}`);
+      triggerNotification(`✓ Investigation report saved for ${currentId}`);
       setSuccessSubmitted(true);
     } finally {
       setSubmitting(false);
@@ -255,20 +269,29 @@ export const Investigate: React.FC<InvestigateProps> = ({
       {/* Page Header */}
       <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
+          {onNavigateTo && (
+            <button
+              onClick={() => onNavigateTo('assigned-reports')}
+              className="h-10 w-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition cursor-pointer shrink-0"
+              title="Back to Assigned Reports"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          )}
           <div className="h-10 w-10 rounded-xl bg-[#008779] text-white flex items-center justify-center shadow-md shadow-[#008779]/20 shrink-0">
             <Search className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-black text-slate-900 tracking-tight">Investigate Safety Issue</h1>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">Investigate Safety Work</h1>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Conduct field investigation, record site observations, identify root cause, and upload photographic evidence.
+              Conduct field investigation, record observations, select root causes, attach evidence, and submit completed report.
             </p>
           </div>
         </div>
 
         {/* Target Incident Selector */}
         <div className="flex items-center gap-2">
-          <label className="text-xs font-bold text-slate-500 shrink-0">Select Issue:</label>
+          <label className="text-xs font-bold text-slate-500 shrink-0">Active Report:</label>
           <select
             value={currentId}
             onChange={e => {
@@ -277,28 +300,28 @@ export const Investigate: React.FC<InvestigateProps> = ({
             }}
             className="px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white text-slate-800 font-bold focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] max-w-xs"
           >
+            {tasks.map(ts => (
+              <option key={ts.task_id} value={ts.task_id}>
+                {ts.task_id} — {ts.title.replace(/^Investigation:\s*/i, '')} ({ts.priority || 'Medium'})
+              </option>
+            ))}
             {events.map(ev => (
               <option key={ev.id} value={ev.id}>
                 {ev.id} — {ev.hazard || ev.site} ({ev.risk_level})
-              </option>
-            ))}
-            {tasks.map(ts => (
-              <option key={ts.task_id} value={ts.task_id}>
-                {ts.task_id} — {ts.title} ({ts.priority})
               </option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Main 2-Column Investigation Layout */}
+      {/* Main 2-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-        {/* LEFT COLUMN (1 col): Safety Issue Summary Card */}
+        {/* LEFT COLUMN: Problem Details & AI Metadata */}
         <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Incident Under Audit</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Incident Dossier</span>
               <h3 className="text-sm font-black text-slate-900 font-mono mt-0.5">{currentId || 'No Issue Selected'}</h3>
             </div>
             {activeItem && 'risk_level' in activeItem && (
@@ -310,41 +333,53 @@ export const Investigate: React.FC<InvestigateProps> = ({
           </div>
 
           {activeItem ? (
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3.5 text-xs">
               <div className="p-3 bg-slate-50 rounded-xl space-y-2">
-                <div className="flex items-center gap-2 text-slate-600">
-                  <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  <span>{'site' in activeItem ? activeItem.site : 'Field Location'} • {'unit' in activeItem ? activeItem.unit : 'Rig Floor'}</span>
+                <div className="flex items-center gap-2 text-slate-700 font-bold">
+                  <MapPin className="h-3.5 w-3.5 text-[#008779] shrink-0" />
+                  <span>{'site' in activeItem ? activeItem.site : 'Operational Site'} • {'unit' in activeItem ? activeItem.unit : 'Unit Area'}</span>
                 </div>
-                <div className="flex items-center gap-2 text-slate-600">
+                <div className="flex items-center gap-2 text-slate-500 font-medium text-[11px]">
                   <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  <span>{'timestamp' in activeItem ? new Date(activeItem.timestamp).toLocaleString() : 'Recent Allotment'}</span>
+                  <span>{'timestamp' in activeItem ? new Date(activeItem.timestamp).toLocaleString() : 'Recent Assignment'}</span>
                 </div>
               </div>
 
               <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
                   Reported Hazard / Title
                 </span>
-                <div className="font-extrabold text-slate-900 leading-snug p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-amber-950">
-                  {'title' in activeItem ? activeItem.title : ('hazard' in activeItem ? activeItem.hazard : 'Unsafe Condition')}
+                <div className="font-extrabold text-slate-900 leading-snug p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl text-emerald-950">
+                  {'title' in activeItem ? activeItem.title.replace(/^Investigation:\s*/i, '') : ('hazard' in activeItem ? activeItem.hazard : 'Unsafe Condition')}
                 </div>
               </div>
 
               <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                  Initial Description
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
+                  Initial Problem Statement
                 </span>
-                <p className="text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  {'description' in activeItem ? activeItem.description : ('instructions' in activeItem ? activeItem.instructions : 'No description.')}
+                <p className="text-slate-700 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200 font-medium">
+                  {'raw_text' in activeItem && activeItem.raw_text ? activeItem.raw_text : 
+                   'description' in activeItem ? activeItem.description : 
+                   ('instructions' in activeItem ? activeItem.instructions : 'No description provided.')}
                 </p>
               </div>
+
+              {/* Manager Instructions if any */}
+              {'instructions' in activeItem && activeItem.instructions && (
+                <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl">
+                  <span className="text-[10px] font-black uppercase text-amber-800 block mb-1">
+                    Manager Instructions
+                  </span>
+                  <p className="text-xs text-amber-950 font-medium">{activeItem.instructions}</p>
+                </div>
+              )}
 
               {/* Photo Evidence Attached in Initial Report */}
               {'photo_url' in activeItem && activeItem.photo_url && (
                 <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                    Initial Evidence Photo
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">
+                    Initial Worker Evidence Photo
                   </span>
                   <img
                     src={activeItem.photo_url}
@@ -375,32 +410,33 @@ export const Investigate: React.FC<InvestigateProps> = ({
           )}
         </div>
 
-        {/* RIGHT COLUMN (2 cols): Investigation Entry Form */}
+        {/* RIGHT COLUMN: Investigation & Report Submission Form */}
         <div className="lg:col-span-2 space-y-5">
           <form onSubmit={handleSubmitInvestigation} className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-2xs space-y-6">
 
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <FileText className="h-4 w-4 text-[#008779]" />
-                <span>Officer Investigation Record</span>
+                <span>Officer Investigation & Rectification Record</span>
               </h2>
-              <span className="text-xs text-slate-400 font-medium">Field Worker Safety Audit</span>
+              <span className="text-xs text-slate-400 font-medium">Safety Officer Report</span>
             </div>
 
             {/* 1. Field Observations */}
             <div className="space-y-1.5">
               <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">
-                1. Actual Safety Observations & Site Findings
+                1. Field Observations & Site Findings *
               </label>
               <p className="text-[11px] text-slate-400">
-                Detail what was observed upon arrival at the unit. Note equipment condition, personnel positions, and barriers bypassed.
+                Detail your physical verification upon arrival: equipment status, safety barriers bypassed, personnel involved, and measured hazards.
               </p>
               <textarea
                 rows={4}
+                required
                 value={findings}
                 onChange={e => setFindings(e.target.value)}
-                placeholder="e.g., Inspected scaffold near Valve Y-102. Top rail was unbolted. Worker bypassed fall arrest lanyard anchor point. Pressure valve was active at 180 PSI without physical barrier tag."
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs bg-white text-slate-800 focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] leading-relaxed"
+                placeholder="e.g., Inspected scaffold near Valve Y-102. Top rail was unbolted. Worker bypassed fall arrest lanyard anchor point. Pressure valve was active at 180 PSI without physical barrier tag. Work halted immediately and isolation confirmed."
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs bg-white text-slate-800 focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] leading-relaxed font-sans"
               />
             </div>
 
@@ -411,7 +447,7 @@ export const Investigate: React.FC<InvestigateProps> = ({
               </label>
 
               <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Primary Cause</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Primary Cause Identified</span>
                 <select
                   value={rootCause}
                   onChange={e => setRootCause(e.target.value)}
@@ -457,7 +493,7 @@ export const Investigate: React.FC<InvestigateProps> = ({
             {/* 3. Evidence & Photo Upload */}
             <div className="space-y-2 pt-2">
               <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">
-                3. Photographic & Document Evidence
+                3. Photographic & Verification Evidence
               </label>
 
               <div className="border-2 border-dashed border-[#A2D9D2] bg-[#F4FAF8] hover:border-[#008779] rounded-xl p-4 text-center cursor-pointer transition relative">
@@ -470,7 +506,7 @@ export const Investigate: React.FC<InvestigateProps> = ({
                 />
                 <div className="flex items-center justify-center gap-2 text-xs text-[#008779] font-bold">
                   <Camera className="h-4 w-4" />
-                  <span>{uploadingPhoto ? 'Uploading evidence photo...' : 'Click to Upload Field Evidence / Photo'}</span>
+                  <span>{uploadingPhoto ? 'Uploading evidence photo...' : 'Click or Tap to Upload Field Evidence / Photo'}</span>
                 </div>
                 <span className="text-[10px] text-slate-400 block mt-0.5">JPG, PNG or video files up to 25MB</span>
               </div>
@@ -484,7 +520,7 @@ export const Investigate: React.FC<InvestigateProps> = ({
                         src={url}
                         alt={`Evidence ${idx + 1}`}
                         onClick={() => setPreviewLightbox(url)}
-                        className="h-20 w-20 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:opacity-90"
+                        className="h-20 w-20 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:opacity-90 shadow-2xs"
                       />
                       <button
                         type="button"
@@ -502,46 +538,37 @@ export const Investigate: React.FC<InvestigateProps> = ({
             {/* 4. Corrective Action Recommendation */}
             <div className="space-y-1.5 pt-2">
               <label className="block text-[11px] font-extrabold text-slate-700 uppercase tracking-wider">
-                4. Required Corrective & Preventive Action
+                4. Corrective & Preventive Action Plan
               </label>
               <textarea
-                rows={2}
+                rows={3}
                 value={correctiveAction}
                 onChange={e => setCorrectiveAction(e.target.value)}
-                placeholder="Recommended actions to remove hazard and ensure barrier integrity."
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-xs bg-white text-slate-800 focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779]"
+                placeholder="Detail physical barriers restored, safety briefing conducted, maintenance scheduled, and long-term hazard mitigation."
+                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-xs bg-white text-slate-800 focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] leading-relaxed font-sans"
               />
             </div>
 
-            {/* 5. Investigation Status & Submit */}
+            {/* 5. Submit Investigation Report */}
             <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <span className="text-xs font-bold text-slate-600">Status:</span>
-                <select
-                  value={investigationStatus}
-                  onChange={e => setInvestigationStatus(e.target.value)}
-                  className="px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-800"
-                >
-                  <option value="In Progress">Investigation In Progress</option>
-                  <option value="Completed">Investigation Completed & Validated</option>
-                  <option value="Escalated">Escalated to HSE Manager</option>
-                </select>
+              <div className="text-xs text-slate-500">
+                Submitting this report completes your investigation and sends it to the Safety Manager.
               </div>
 
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full sm:w-auto px-6 py-3 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-md shadow-[#008779]/20 cursor-pointer disabled:opacity-50"
+                className="w-full sm:w-auto px-8 py-3.5 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-md shadow-[#008779]/20 cursor-pointer disabled:opacity-50"
               >
                 {submitting ? (
                   <>
                     <RotateCw className="h-4 w-4 animate-spin" />
-                    <span>Saving Findings...</span>
+                    <span>Submitting Report...</span>
                   </>
                 ) : (
                   <>
                     <Send className="h-4 w-4" />
-                    <span>Save & Submit Investigation</span>
+                    <span>Submit Investigation Report</span>
                   </>
                 )}
               </button>
@@ -549,14 +576,37 @@ export const Investigate: React.FC<InvestigateProps> = ({
 
             {/* Success banner */}
             {successSubmitted && (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-xs text-emerald-900 animate-fadeIn">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                <div>
-                  <div className="font-extrabold uppercase text-[11px]">Investigation Logged Successfully</div>
-                  <div className="text-[11px] text-emerald-800 mt-0.5">
-                    Field observations, causal factors, and evidence photo have been saved to the central HSE audit log.
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-3 text-xs text-emerald-900 animate-in fade-in">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <div className="font-extrabold uppercase text-[11px]">Investigation Report Submitted Successfully!</div>
+                    <div className="text-[11px] text-emerald-800 mt-0.5">
+                      Your field findings, root cause analysis, and evidence have been logged and forwarded to the Safety Manager.
+                    </div>
                   </div>
                 </div>
+
+                {onNavigateTo && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-emerald-200/60">
+                    <button
+                      type="button"
+                      onClick={() => onNavigateTo('assigned-reports')}
+                      className="px-4 py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      <span>Back to Assigned Reports</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onNavigateTo('ai-analysis', activeItem)}
+                      className="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-emerald-700" />
+                      <span>View AI Diagnostics</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

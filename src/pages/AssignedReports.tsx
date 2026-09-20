@@ -8,7 +8,6 @@ import {
   CheckCircle2, 
   RefreshCw, 
   FileText, 
-  User, 
   Sparkles,
   Check,
   Eye,
@@ -16,22 +15,18 @@ import {
   ShieldAlert,
   ShieldCheck,
   AlertTriangle,
-  ClipboardList,
   XCircle,
   Flame,
-  Send,
-  Wrench,
   X
 } from 'lucide-react';
 import { OfficerTask, SafetyEvent, User as UserType } from '../types';
-import { RiskBadge } from '../components/UIElements';
 
 interface AssignedReportsProps {
   user?: UserType | null;
   triggerNotification: (msg: string) => void;
   triggerStateRefresh: boolean;
   onNavigateTo: (page: string, event?: any) => void;
-  initialStatusFilter?: 'ALL' | 'Assigned' | 'In Progress' | 'Submitted' | 'Completed';
+  initialStatusFilter?: 'ALL' | 'Assigned' | 'In Progress' | 'Completed';
 }
 
 export const AssignedReports: React.FC<AssignedReportsProps> = ({
@@ -44,24 +39,22 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
   const [tasks, setTasks] = useState<OfficerTask[]>([]);
   const [events, setEvents] = useState<SafetyEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'Assigned' | 'In Progress' | 'Submitted' | 'Completed'>(initialStatusFilter);
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'Assigned' | 'In Progress' | 'Completed'>(initialStatusFilter);
 
   useEffect(() => {
     if (initialStatusFilter) setStatusFilter(initialStatusFilter);
   }, [initialStatusFilter]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
 
-  // Modal for viewing full task details
+  // Modal for viewing full task details & taking accept/reject decision
   const [selectedTask, setSelectedTask] = useState<OfficerTask | null>(null);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
-  const [solveFindings, setSolveFindings] = useState('');
-  const [isSolving, setIsSolving] = useState(false);
 
-  // Modal for submitting final report for Manager Re-Check
-  const [recheckTask, setRecheckTask] = useState<OfficerTask | null>(null);
-  const [recheckFindings, setRecheckFindings] = useState('');
-  const [submittingRecheck, setSubmittingRecheck] = useState(false);
+  // Reject dialog state
+  const [rejectingTask, setRejectingTask] = useState<OfficerTask | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
@@ -104,47 +97,43 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
     fetchData();
   }, [triggerStateRefresh]);
 
-  // Handle Accept Report (changes status to 'In Progress' so officer can solve)
+  // Handle Accept Report -> updates status to 'In Progress' and directs directly to Investigate
   const handleAcceptTask = async (task: OfficerTask) => {
     setUpdatingTaskId(task.task_id);
     try {
-      const res = await fetch(apiUrl(`/api/manager/tasks/${task.task_id}`), {
+      await fetch(apiUrl(`/api/manager/tasks/${task.task_id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'accept',
-          status: 'In Progress',
-          findings: task.findings || 'Accepted by officer for field investigation and resolution.'
+          status: 'In Progress'
         })
       });
-      if (res.ok) {
-        triggerNotification(`✓ Accepted report ${task.task_id}. You can now solve and submit findings.`);
-      } else {
-        triggerNotification(`✓ Accepted report ${task.task_id}.`);
-      }
-      setTasks(prev => prev.map(t => t.task_id === task.task_id ? { ...t, status: 'In Progress' } : t));
-      if (selectedTask?.task_id === task.task_id) {
-        setSelectedTask(prev => prev ? { ...prev, status: 'In Progress' } : null);
-      }
+      triggerNotification(`✓ Accepted report ${task.task_id}. Proceeding to field investigation.`);
+      setTasks(prev => prev.map(t => t.task_id === task.task_id ? { ...t, status: 'In Progress', officer_status: 'Accepted' } : t));
+      setSelectedTask(null);
+
+      // Find matching safety event if any, and navigate to Investigate page
+      const relatedEvt = events.find(e => e.id === task.related_event_id || e.report_code === task.task_id || e.report_code === task.related_event_id);
+      onNavigateTo('investigate', relatedEvt || task);
     } catch {
-      triggerNotification(`✓ Marked ${task.task_id} as In Progress`);
-      setTasks(prev => prev.map(t => t.task_id === task.task_id ? { ...t, status: 'In Progress' } : t));
-      if (selectedTask?.task_id === task.task_id) {
-        setSelectedTask(prev => prev ? { ...prev, status: 'In Progress' } : null);
-      }
+      triggerNotification(`✓ Accepted report ${task.task_id}. Proceeding to investigation.`);
+      setSelectedTask(null);
+      const relatedEvt = events.find(e => e.id === task.related_event_id || e.report_code === task.task_id || e.report_code === task.related_event_id);
+      onNavigateTo('investigate', relatedEvt || task);
     } finally {
       setUpdatingTaskId(null);
     }
   };
 
-  // Handle Reject Report (Non Accept)
-  const handleRejectTask = async (task: OfficerTask) => {
-    const reason = prompt('Please enter the reason for rejecting this assignment:') || 'Officer unable to take task / rejected by officer';
-    if (!reason.trim()) return;
+  // Handle Reject Report -> sets status back to 'Pending Review' / Rejected and returns to manager
+  const handleConfirmReject = async () => {
+    if (!rejectingTask) return;
+    const reason = rejectReason.trim() || 'Officer unable to take assignment at this time.';
 
-    setUpdatingTaskId(task.task_id);
+    setUpdatingTaskId(rejectingTask.task_id);
     try {
-      const res = await fetch(apiUrl(`/api/manager/tasks/${task.task_id}`), {
+      await fetch(apiUrl(`/api/manager/tasks/${rejectingTask.task_id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -153,90 +142,26 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
           rejection_reason: reason
         })
       });
-      if (res.ok) {
-        triggerNotification(`Report ${task.task_id} rejected and returned to Safety Manager.`);
-      } else {
-        triggerNotification(`Report ${task.task_id} marked as Rejected.`);
-      }
-      setTasks(prev => prev.filter(t => t.task_id !== task.task_id));
+      triggerNotification(`Report ${rejectingTask.task_id} rejected and returned to Safety Manager.`);
+      setTasks(prev => prev.filter(t => t.task_id !== rejectingTask.task_id));
       setSelectedTask(null);
+      setRejectingTask(null);
+      setRejectReason('');
     } catch {
-      triggerNotification(`Report ${task.task_id} rejected.`);
-      setTasks(prev => prev.filter(t => t.task_id !== task.task_id));
+      triggerNotification(`Report ${rejectingTask.task_id} rejected.`);
+      setTasks(prev => prev.filter(t => t.task_id !== rejectingTask.task_id));
       setSelectedTask(null);
+      setRejectingTask(null);
+      setRejectReason('');
     } finally {
       setUpdatingTaskId(null);
     }
   };
 
-  // Handle Update Status
-  const handleUpdateStatus = async (task: OfficerTask, newStatus: string) => {
-    setUpdatingTaskId(task.task_id);
-    try {
-      const res = await fetch(apiUrl(`/api/manager/tasks/${task.task_id}`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      });
-      if (res.ok) {
-        triggerNotification(`✓ Report ${task.task_id} updated to ${newStatus}`);
-        setTasks(prev => prev.map(t => t.task_id === task.task_id ? { ...t, status: newStatus } : t));
-        if (selectedTask?.task_id === task.task_id) {
-          setSelectedTask(prev => prev ? { ...prev, status: newStatus } : null);
-        }
-      }
-    } catch {
-      setTasks(prev => prev.map(t => t.task_id === task.task_id ? { ...t, status: newStatus } : t));
-    } finally {
-      setUpdatingTaskId(null);
-    }
-  };
-
-  // Handle Submit Report for Manager Re-Check
-  const handleSubmitRecheck = async () => {
-    if (!recheckTask) return;
-    if (!recheckFindings.trim()) {
-      triggerNotification('Please enter investigation findings and actions taken before submitting.');
-      return;
-    }
-
-    setSubmittingRecheck(true);
-    try {
-      const res = await fetch(apiUrl(`/api/officer/tasks/${recheckTask.task_id}/submit-recheck`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          findings: recheckFindings.trim(),
-          officer_name: user?.name || recheckTask.assigned_officer_name
-        })
-      });
-
-      if (res.ok) {
-        triggerNotification(`Report for ${recheckTask.task_id} submitted for Manager Re-Check!`);
-        setTasks(prev => prev.map(t => t.task_id === recheckTask.task_id ? {
-          ...t,
-          status: 'Submitted',
-          findings: recheckFindings.trim(),
-          submitted_findings: recheckFindings.trim()
-        } : t));
-        setRecheckTask(null);
-        setRecheckFindings('');
-      } else {
-        throw new Error();
-      }
-    } catch {
-      triggerNotification(`Report for ${recheckTask.task_id} submitted for Manager Re-Check (saved locally)`);
-      setTasks(prev => prev.map(t => t.task_id === recheckTask.task_id ? {
-        ...t,
-        status: 'Submitted',
-        findings: recheckFindings.trim(),
-        submitted_findings: recheckFindings.trim()
-      } : t));
-      setRecheckTask(null);
-      setRecheckFindings('');
-    } finally {
-      setSubmittingRecheck(false);
-    }
+  const handleOpenInvestigate = (task: OfficerTask) => {
+    setSelectedTask(null);
+    const relatedEvt = events.find(e => e.id === task.related_event_id || e.report_code === task.task_id || e.report_code === task.related_event_id);
+    onNavigateTo('investigate', relatedEvt || task);
   };
 
   // Filter tasks with strict officer isolation
@@ -270,7 +195,10 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
 
   const filteredTasks = useMemo(() => {
     return userScopedTasks.filter(task => {
-      if (statusFilter !== 'ALL' && task.status !== statusFilter) return false;
+      if (statusFilter === 'Assigned' && task.status !== 'Assigned') return false;
+      if (statusFilter === 'In Progress' && task.status !== 'In Progress') return false;
+      if (statusFilter === 'Completed' && task.status !== 'Completed' && task.status !== 'Submitted' && task.status !== 'Recheck') return false;
+      
       if (priorityFilter !== 'ALL' && task.priority?.toUpperCase() !== priorityFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -288,9 +216,8 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
     const total = userScopedTasks.length;
     const assigned = userScopedTasks.filter(t => t.status === 'Assigned').length;
     const inProgress = userScopedTasks.filter(t => t.status === 'In Progress').length;
-    const recheck = userScopedTasks.filter(t => t.status === 'Submitted').length;
-    const completed = userScopedTasks.filter(t => t.status === 'Completed').length;
-    return { total, assigned, inProgress, recheck, completed };
+    const completed = userScopedTasks.filter(t => t.status === 'Completed' || t.status === 'Submitted' || t.status === 'Recheck').length;
+    return { total, assigned, inProgress, completed };
   }, [userScopedTasks]);
 
   return (
@@ -306,7 +233,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
             <div>
               <h1 className="text-xl font-black text-slate-900 tracking-tight">Assigned Reports</h1>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Shows all safety reports assigned to the officer by the Manager. Review, accept, and update findings.
+                Review safety reports assigned by the HSE Manager. Accept work to begin investigation or reject if reassignment is needed.
               </p>
             </div>
           </div>
@@ -337,7 +264,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
             <div className="h-7 w-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600"><FileText className="h-3.5 w-3.5" /></div>
           </div>
           <div className="text-2xl font-black text-slate-900 mt-2 font-mono">{metrics.total}</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Assigned by HSE Manager</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">Assigned to your queue</div>
         </div>
 
         <div
@@ -347,11 +274,11 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Pending Acceptance</span>
+            <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Pending Decision</span>
             <div className="h-7 w-7 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600"><Clock className="h-3.5 w-3.5" /></div>
           </div>
           <div className="text-2xl font-black text-amber-600 mt-2 font-mono">{metrics.assigned}</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Awaiting officer action</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">Accept or Reject required</div>
         </div>
 
         <div
@@ -365,7 +292,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
             <div className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600"><RefreshCw className="h-3.5 w-3.5" /></div>
           </div>
           <div className="text-2xl font-black text-blue-600 mt-2 font-mono">{metrics.inProgress}</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Investigation active</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">Accepted & Under Investigation</div>
         </div>
 
         <div
@@ -375,11 +302,11 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Completed</span>
+            <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Investigated</span>
             <div className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /></div>
           </div>
           <div className="text-2xl font-black text-emerald-600 mt-2 font-mono">{metrics.completed}</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Findings logged</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">Report submitted to Manager</div>
         </div>
       </div>
 
@@ -410,7 +337,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
           </select>
 
           <div className="flex items-center bg-slate-100 p-1 rounded-xl">
-            {(['ALL', 'Assigned', 'In Progress', 'Submitted', 'Completed'] as const).map(tab => (
+            {(['ALL', 'Assigned', 'In Progress', 'Completed'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setStatusFilter(tab)}
@@ -420,7 +347,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
                     : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
-                {tab === 'Assigned' ? 'Pending' : tab === 'Submitted' ? 'Re-Check' : tab}
+                {tab === 'Assigned' ? 'Pending Acceptance' : tab === 'Completed' ? 'Investigated' : tab}
               </button>
             ))}
           </div>
@@ -433,27 +360,28 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
           <table className="w-full text-left text-xs text-slate-700">
             <thead className="bg-slate-50/80 border-b border-slate-200 text-[10.5px] font-black uppercase tracking-wider text-slate-500">
               <tr>
-                <th className="py-3.5 px-4">Problem</th>
-                <th className="py-3.5 px-4">Risk Score</th>
-                <th className="py-3.5 px-4 text-center">View</th>
+                <th className="py-3.5 px-4">Problem & Incident</th>
+                <th className="py-3.5 px-4">Risk Level</th>
+                <th className="py-3.5 px-4">Assignment Status</th>
+                <th className="py-3.5 px-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
               {loading ? (
                 <tr>
-                  <td colSpan={3} className="py-12 text-center text-slate-400">
+                  <td colSpan={4} className="py-12 text-center text-slate-400">
                     <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-[#008779]" />
                     <span className="font-bold text-xs">Loading assigned reports...</span>
                   </td>
                 </tr>
               ) : filteredTasks.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="py-14 text-center text-slate-400">
+                  <td colSpan={4} className="py-14 text-center text-slate-400">
                     <ClipboardCheck className="h-8 w-8 mx-auto mb-2 text-slate-300 stroke-1" />
                     <div className="font-bold text-slate-700 text-sm">No assigned reports found</div>
                     <div className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
                       {statusFilter !== 'ALL' 
-                        ? `No reports matching status '${statusFilter}'.` 
+                        ? `No reports currently matching status '${statusFilter}'.` 
                         : user?.name 
                           ? `No reports are currently assigned to ${user.name}. When the Safety Manager assigns a report to you, it will appear here.`
                           : 'No reports have been assigned yet by the Manager.'}
@@ -463,14 +391,17 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
               ) : (
                 filteredTasks.map((task) => {
                   const rawTitle = (task.title || '').replace(/^Investigation:\s*/i, '');
-                  const shortTitle = rawTitle.length > 50 ? `${rawTitle.substring(0, 48)}...` : rawTitle;
+                  const shortTitle = rawTitle.length > 55 ? `${rawTitle.substring(0, 53)}...` : rawTitle;
                   const rawScore = task.priority === 'Critical' ? 9.2 : task.priority === 'High' ? 7.8 : task.priority === 'Medium' ? 5.2 : 2.8;
                   const isHighSif = task.priority === 'Critical' || task.priority === 'High';
+                  const isPending = task.status === 'Assigned' || task.status === 'Pending';
+                  const isInProg = task.status === 'In Progress';
+                  const isDone = task.status === 'Completed' || task.status === 'Submitted' || task.status === 'Recheck';
 
                   return (
                     <tr key={task.task_id} className="hover:bg-slate-50/70 transition">
                       
-                      {/* 1. PROBLEM (SHORT TITLE + SITE/UNIT/ID) */}
+                      {/* 1. PROBLEM */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2.5">
                           <div className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold ${
@@ -493,7 +424,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
                         </div>
                       </td>
 
-                      {/* 2. RISK SCORE */}
+                      {/* 2. RISK LEVEL */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wider ${
                           task.priority === 'Critical'
@@ -505,20 +436,91 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
                             : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                         }`}>
                           {isHighSif && <AlertTriangle className="h-3 w-3 shrink-0" />}
-                          <span>{rawScore.toFixed(1)} / 10 • {(task.priority || 'Medium').toUpperCase()} {isHighSif ? 'SIF' : ''}</span>
+                          <span>{rawScore.toFixed(1)} / 10 • {(task.priority || 'Medium').toUpperCase()}</span>
                         </span>
                       </td>
 
-                      {/* 3. VIEW BUTTON */}
+                      {/* 3. STATUS */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-extrabold uppercase ${
+                          isPending 
+                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                            : isInProg
+                            ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        }`}>
+                          {isPending ? 'Pending Acceptance' : isInProg ? 'In Progress' : 'Investigated'}
+                        </span>
+                      </td>
+
+                      {/* 4. ACTIONS */}
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedTask(task)}
-                          className="px-3.5 py-1.5 rounded-xl font-extrabold text-xs bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-[#008779] border border-slate-200 hover:border-[#008779]/30 transition inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                        >
-                          <Eye className="h-3.5 w-3.5 text-[#008779]" />
-                          <span>View</span>
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                          
+                          {/* View details modal button */}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTask(task)}
+                            className="px-3 py-1.5 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <Eye className="h-3.5 w-3.5 text-slate-600" />
+                            <span>View</span>
+                          </button>
+
+                          {/* If Pending: Show Accept & Reject */}
+                          {isPending && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleAcceptTask(task)}
+                                disabled={updatingTaskId === task.task_id}
+                                className="px-3.5 py-1.5 rounded-xl font-black text-xs bg-[#008779] hover:bg-[#007064] text-white transition inline-flex items-center gap-1 cursor-pointer shadow-xs"
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                                <span>Accept</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRejectingTask(task);
+                                  setRejectReason('');
+                                }}
+                                disabled={updatingTaskId === task.task_id}
+                                className="px-3 py-1.5 rounded-xl font-bold text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <XCircle className="h-3.5 w-3.5 text-rose-600" />
+                                <span>Reject</span>
+                              </button>
+                            </>
+                          )}
+
+                          {/* If In Progress: Direct button to Investigate */}
+                          {isInProg && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenInvestigate(task)}
+                              className="px-3.5 py-1.5 rounded-xl font-black text-xs bg-[#008779] hover:bg-[#007064] text-white transition inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            >
+                              <Search className="h-3.5 w-3.5" />
+                              <span>Investigate</span>
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+
+                          {/* If Investigated / Completed: View in investigation */}
+                          {isDone && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenInvestigate(task)}
+                              className="px-3 py-1.5 rounded-xl font-bold text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                              <span>Review Record</span>
+                            </button>
+                          )}
+
+                        </div>
                       </td>
 
                     </tr>
@@ -538,8 +540,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
         const isHighSif = priority === 'Critical' || priority === 'High';
         const isPending = selectedTask.status === 'Assigned' || selectedTask.status === 'Pending';
         const isInProg = selectedTask.status === 'In Progress';
-        const isCompleted = selectedTask.status === 'Completed';
-        const isSubmitted = selectedTask.status === 'Submitted' || selectedTask.status === 'Recheck';
+        const isDone = selectedTask.status === 'Completed' || selectedTask.status === 'Submitted' || selectedTask.status === 'Recheck';
 
         const fullProblemText = relatedEvt?.raw_text || relatedEvt?.description || selectedTask.raw_text || selectedTask.description || selectedTask.title;
         const condition = relatedEvt?.condition || selectedTask.condition || 'Unsafe Condition';
@@ -578,7 +579,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
                 </button>
               </div>
 
-              {/* Modal Body: Complete Problem Details & AI Diagnostics */}
+              {/* Modal Body: Complete Problem Details */}
               <div className="p-6 space-y-5">
                 
                 {/* 1. FULL PROBLEM STATEMENT */}
@@ -620,10 +621,9 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
                     <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase ${
                       isPending ? 'bg-amber-100 text-amber-800 border border-amber-200' :
                       isInProg ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                      isCompleted ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                      'bg-purple-100 text-purple-800 border border-purple-200'
+                      'bg-emerald-100 text-emerald-800 border border-emerald-200'
                     }`}>
-                      {isPending ? 'Pending Acceptance' : selectedTask.status}
+                      {isPending ? 'Pending Acceptance' : isInProg ? 'In Progress' : 'Investigated'}
                     </span>
                   </div>
                 </div>
@@ -695,113 +695,33 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
                   </div>
                 )}
 
-                {/* 5. PROBLEM SOLVING PANEL (WHEN IN PROGRESS / ACCEPTED) */}
-                {isInProg && (
-                  <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-2xl space-y-3">
-                    <label className="block text-xs font-extrabold uppercase tracking-wide text-emerald-900 flex items-center gap-2">
-                      <Wrench className="h-4 w-4 text-[#008779]" />
-                      <span>Solve Problem & Record Corrective Findings</span>
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={solveFindings || selectedTask.findings || ''}
-                      onChange={(e) => setSolveFindings(e.target.value)}
-                      placeholder="Enter field rectification details, barriers restored, and actions taken to solve the problem..."
-                      className="w-full p-3 text-xs border border-emerald-200 rounded-xl bg-white focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] text-slate-800 font-medium leading-relaxed"
-                    />
-                  </div>
-                )}
-
-                {/* 6. LOGGED FINDINGS IF ALREADY SUBMITTED / COMPLETED */}
-                {(isSubmitted || isCompleted) && selectedTask.findings && (
-                  <div>
-                    <label className="block text-[10.5px] font-black uppercase text-emerald-700 mb-1.5">
-                      Logged Field Findings & Corrective Action
-                    </label>
-                    <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-xs text-emerald-900 leading-relaxed">
-                      {selectedTask.findings}
-                    </div>
-                  </div>
-                )}
-
               </div>
 
-              {/* Modal Footer Actions: Accept, Reject, Solve, and Close */}
+              {/* Modal Footer Actions: Accept, Reject, Go to Investigation, or Close */}
               <div className="px-6 py-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 rounded-b-3xl">
                 <div className="flex flex-wrap items-center gap-2">
                   
-                  {/* CASE 1: NOT IN PROGRESS -> SHOW ACCEPT & REJECT BUTTONS */}
-                  {!isInProg ? (
+                  {/* If Pending Acceptance: Officer accepts or rejects */}
+                  {isPending && (
                     <>
                       <button
                         type="button"
                         onClick={() => handleAcceptTask(selectedTask)}
                         disabled={updatingTaskId === selectedTask.task_id}
-                        className="px-4 py-2 bg-[#008779] hover:bg-[#007064] text-white text-xs font-black rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                        className="px-5 py-2.5 bg-[#008779] hover:bg-[#007064] text-white text-xs font-black rounded-xl transition cursor-pointer flex items-center gap-2 shadow-md shadow-[#008779]/20"
                       >
                         <Check className="h-4 w-4" />
-                        <span>{isCompleted || isSubmitted ? 'Re-Accept Assignment' : 'Accept Assignment'}</span>
+                        <span>Accept Work & Start Investigation</span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => handleRejectTask(selectedTask)}
-                        disabled={updatingTaskId === selectedTask.task_id}
-                        className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-black rounded-xl transition cursor-pointer flex items-center gap-1.5"
-                      >
-                        <XCircle className="h-4 w-4 text-rose-600" />
-                        <span>Reject / Non-Accept</span>
-                      </button>
-                    </>
-                  ) : (
-                    /* CASE 2: IN PROGRESS -> SHOW SOLVE BUTTON & REJECT OPTION */
-                    <>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const findings = solveFindings.trim() || selectedTask.findings || 'Problem investigated and resolved on site.';
-                          setUpdatingTaskId(selectedTask.task_id);
-                          try {
-                            const res = await fetch(apiUrl(`/api/officer/tasks/${selectedTask.task_id}/submit-recheck`), {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                findings: findings,
-                                officer_name: user?.name || selectedTask.assigned_officer_name
-                              })
-                            });
-                            if (res.ok) {
-                              triggerNotification(`Problem solved for ${selectedTask.task_id}. Submitted for Manager Re-Check.`);
-                            } else {
-                              triggerNotification(`Problem solution saved.`);
-                            }
-                            setTasks(prev => prev.map(t => t.task_id === selectedTask.task_id ? {
-                              ...t,
-                              status: 'Submitted',
-                              findings: findings,
-                              submitted_findings: findings
-                            } : t));
-                            setSelectedTask(null);
-                            setSolveFindings('');
-                          } catch {
-                            triggerNotification(`Solution submitted for Manager Re-Check`);
-                            setSelectedTask(null);
-                          } finally {
-                            setUpdatingTaskId(null);
-                          }
+                        onClick={() => {
+                          setRejectingTask(selectedTask);
+                          setRejectReason('');
                         }}
                         disabled={updatingTaskId === selectedTask.task_id}
-                        className="px-5 py-2 bg-[#008779] hover:bg-[#007064] text-white text-xs font-black rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-md"
-                      >
-                        <ClipboardCheck className="h-4 w-4" />
-                        <span>Solve Problem & Submit for Re-Check</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleRejectTask(selectedTask)}
-                        disabled={updatingTaskId === selectedTask.task_id}
-                        className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                        className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-black rounded-xl transition cursor-pointer flex items-center gap-1.5"
                       >
                         <XCircle className="h-4 w-4 text-rose-600" />
                         <span>Reject Assignment</span>
@@ -809,14 +729,51 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
                     </>
                   )}
 
+                  {/* If In Progress (Already Accepted): Go to Investigation page */}
+                  {isInProg && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenInvestigate(selectedTask)}
+                        className="px-5 py-2.5 bg-[#008779] hover:bg-[#007064] text-white text-xs font-black rounded-xl transition cursor-pointer flex items-center gap-2 shadow-md shadow-[#008779]/20"
+                      >
+                        <Search className="h-4 w-4" />
+                        <span>Investigate This Report</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRejectingTask(selectedTask);
+                          setRejectReason('');
+                        }}
+                        disabled={updatingTaskId === selectedTask.task_id}
+                        className="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <XCircle className="h-4 w-4 text-rose-600" />
+                        <span>Reject Assignment</span>
+                      </button>
+                    </>
+                  )}
+
+                  {/* If Done: Open record */}
+                  {isDone && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenInvestigate(selectedTask)}
+                      className="px-5 py-2.5 bg-[#008779] hover:bg-[#007064] text-white text-xs font-black rounded-xl transition cursor-pointer flex items-center gap-2 shadow-sm"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>View Investigation Record</span>
+                    </button>
+                  )}
+
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedTask(null);
-                    setSolveFindings('');
-                  }}
+                  onClick={() => setSelectedTask(null)}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
                 >
                   Close
@@ -828,67 +785,66 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
         );
       })()}
 
-      {/* Officer Submit for Manager Re-Check Modal */}
-      {recheckTask && (
+      {/* Reject Reason Modal Dialog */}
+      {rejectingTask && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 border border-slate-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200 animate-in fade-in">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
-                  <ClipboardCheck className="h-5 w-5" />
+                <div className="h-9 w-9 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center">
+                  <XCircle className="h-5 w-5" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 block">
-                    Submit Final Report for Re-Check
+                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-700 block">
+                    Reject Assignment
                   </span>
-                  <h3 className="text-sm font-black text-slate-900 mt-0.5">{recheckTask.title}</h3>
+                  <h3 className="text-sm font-black text-slate-900 mt-0.5">{rejectingTask.task_id}</h3>
                 </div>
               </div>
               <button
-                onClick={() => setRecheckTask(null)}
+                onClick={() => setRejectingTask(null)}
                 className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 leading-relaxed font-medium">
-              ℹ️ Once submitted, this report will enter the Manager's <b>"Re-Check"</b> queue. Upon Manager verification and approval, the employee will receive a completion notice and the issue will be completely closed.
-            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Please enter the reason for rejecting this assignment. The report will be returned to the HSE Manager queue for reassignment.
+            </p>
 
             <div>
               <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1.5">
-                Field Findings, Barrier Rectification & Action Taken *
+                Reason for Rejection *
               </label>
               <textarea
-                rows={5}
-                value={recheckFindings}
-                onChange={(e) => setRecheckFindings(e.target.value)}
-                placeholder="Detail the root cause identified, physical barriers restored, test measurements verified, and worker safety brief conducted..."
-                className="w-full p-3 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 leading-relaxed font-sans"
+                rows={3}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="e.g., Assigned unit outside of my current patrol perimeter / specialized chemical safety officer required..."
+                className="w-full p-3 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 leading-relaxed font-sans"
               />
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
               <button
-                onClick={() => setRecheckTask(null)}
+                onClick={() => setRejectingTask(null)}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
-                onClick={handleSubmitRecheck}
-                disabled={submittingRecheck || !recheckFindings.trim()}
-                className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                onClick={handleConfirmReject}
+                disabled={updatingTaskId === rejectingTask.task_id}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                {submittingRecheck ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ClipboardCheck className="h-3.5 w-3.5" />}
-                <span>{submittingRecheck ? 'Submitting...' : 'Submit to Manager for Re-Check'}</span>
+                {updatingTaskId === rejectingTask.task_id ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
+                <span>Confirm Rejection</span>
               </button>
             </div>
           </div>
         </div>
       )}
-
 
     </div>
   );
