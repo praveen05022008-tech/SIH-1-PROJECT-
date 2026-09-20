@@ -4,7 +4,7 @@ import {
   UserCheck, Search, CheckCircle2, Clock, AlertTriangle,
   RefreshCw, ChevronRight, Flame, Building2, Calendar,
   ShieldAlert, ShieldCheck, FileText, User, MapPin, X,
-  ArrowUpRight, Sparkles, Send, Eye, Image as ImageIcon, Lock
+  ArrowUpRight, Sparkles, Send, Eye, Image as ImageIcon, Lock, Users
 } from 'lucide-react';
 import { OfficerProfile, SafetyEvent, User as UserType } from '../types';
 
@@ -85,6 +85,12 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
   const [selectedOfficerId, setSelectedOfficerId] = useState<string>('');
   const [assignPriority, setAssignPriority] = useState<string>('HIGH');
   const [assignDueDays, setAssignDueDays] = useState<number>(2);
+  const [assignTeamSize, setAssignTeamSize] = useState<number>(2);
+  const [assignDeadline, setAssignDeadline] = useState<string>(() => {
+    const d = new Date(Date.now() + 24 * 3600000);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  });
   const [assignInstructions, setAssignInstructions] = useState<string>('');
 
   // Safe UTC Date parsing
@@ -216,6 +222,10 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
     setSelectedOfficerId(defaultOfficer ? String(defaultOfficer.id) : '');
     setAssignPriority(report.sif_potential?.toUpperCase() || report.priority?.toUpperCase() || 'HIGH');
     setAssignDueDays(2);
+    setAssignTeamSize(2);
+    const d = new Date(Date.now() + 24 * 3600000);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    setAssignDeadline(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
     setAssignInstructions(`Conduct on-site field hazard verification for ${report.report_code || report.id}. Verify physical barriers, assess hazard exposure zone, and record corrective measures.`);
   };
 
@@ -237,7 +247,7 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
 
     setSubmitting(true);
     try {
-      const dueDate = new Date(Date.now() + assignDueDays * 86400000).toISOString();
+      const dueDate = assignDeadline ? new Date(assignDeadline).toISOString() : new Date(Date.now() + assignDueDays * 86400000).toISOString();
       const reportCode = targetReport.report_code || targetReport.id;
 
       const payload = {
@@ -248,9 +258,11 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
         assigned_officer_id: Number(selectedOfficerId),
         assigned_officer_name: officerName,
         priority: assignPriority,
-        instructions: assignInstructions,
+        instructions: `${assignInstructions.trim()} [Accompanying Team Size: ${assignTeamSize} Worker(s)] [Deadline: ${new Date(dueDate).toLocaleString()}]`,
         due_days: assignDueDays,
         due_date: dueDate,
+        team_size: assignTeamSize,
+        people_involved: assignTeamSize,
         assigned_by: user?.name || 'HSE Manager',
         site: targetReport.site || 'Site Alpha - Jamnagar Complex',
         unit: targetReport.unit || 'Unit 04 - FCCU'
@@ -825,6 +837,34 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
                             />
                           </div>
 
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                                <Users className="h-3.5 w-3.5 text-[#008779]" />
+                                <span>Accompanying Worker Count:</span>
+                              </label>
+                              <input
+                                type="text"
+                                disabled
+                                value={`${assignTeamSize} Worker(s) Allocated`}
+                                className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-bold cursor-not-allowed"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                                <Clock className="h-3.5 w-3.5 text-amber-600" />
+                                <span>Target Deadline Time:</span>
+                              </label>
+                              <input
+                                type="text"
+                                disabled
+                                value={new Date(assignDeadline).toLocaleString()}
+                                className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-bold cursor-not-allowed"
+                              />
+                            </div>
+                          </div>
+
                           <div>
                             <label className="block text-[11px] font-bold text-slate-700 mb-1">
                               Manager Instructions:
@@ -899,6 +939,71 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
                               </option>
                             ))}
                           </select>
+                        </div>
+
+                        {/* 2-Column Row: Worker Count / Team Size & Target Deadline Date & Time */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                          
+                          {/* 1. Worker Count / Team Size to Accompany */}
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                              <Users className="h-3.5 w-3.5 text-[#008779]" />
+                              <span>Worker Count / Team Size: <span className="text-red-500">*</span></span>
+                            </label>
+                            <select
+                              value={assignTeamSize}
+                              onChange={(e) => setAssignTeamSize(Number(e.target.value))}
+                              className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 bg-white text-slate-800 font-semibold cursor-pointer focus:ring-2 focus:ring-[#008779]/20"
+                            >
+                              <option value={1}>1 Worker (Solo Officer Inspection)</option>
+                              <option value={2}>2 Workers (Officer + 1 Worker / Buddy Pair)</option>
+                              <option value={3}>3 Workers (Officer + 2 Workers)</option>
+                              <option value={4}>4 Workers (Specialized Safety Squad)</option>
+                              <option value={5}>5+ Workers (Rapid Response Task Force)</option>
+                            </select>
+                            <span className="text-[10px] text-slate-400 mt-1 block">
+                              Number of workers to accompany the officer to the work site
+                            </span>
+                          </div>
+
+                          {/* 2. Target Deadline Date & Time */}
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-amber-600" />
+                              <span>Target Deadline Time: <span className="text-red-500">*</span></span>
+                            </label>
+                            <input
+                              type="datetime-local"
+                              value={assignDeadline}
+                              onChange={(e) => setAssignDeadline(e.target.value)}
+                              className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-800 font-bold focus:ring-2 focus:ring-[#008779]/20"
+                              required
+                            />
+                            {/* Quick Presets */}
+                            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                              <span className="text-[9.5px] font-bold text-slate-400 uppercase">Quick:</span>
+                              {[
+                                { label: '+4 Hrs', hours: 4 },
+                                { label: 'Tomorrow (24h)', hours: 24 },
+                                { label: '2 Days (48h)', hours: 48 },
+                                { label: '3 Days (72h)', hours: 72 }
+                              ].map(p => (
+                                <button
+                                  key={p.label}
+                                  type="button"
+                                  onClick={() => {
+                                    const d = new Date(Date.now() + p.hours * 3600000);
+                                    const pad = (n: number) => n.toString().padStart(2, '0');
+                                    setAssignDeadline(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+                                  }}
+                                  className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-slate-100 hover:bg-[#E8F6F4] text-slate-600 hover:text-[#008779] border border-slate-200 transition cursor-pointer"
+                                >
+                                  {p.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
                         </div>
 
                         {/* Manager Instructions */}

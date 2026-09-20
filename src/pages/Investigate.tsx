@@ -1,5 +1,5 @@
 import { apiUrl } from '../config/api';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, 
   MapPin, 
@@ -18,7 +18,9 @@ import {
   Flame,
   ShieldCheck,
   Building2,
-  AlertTriangle
+  AlertTriangle,
+  Clock,
+  Users
 } from 'lucide-react';
 import { SafetyEvent, OfficerTask, User } from '../types';
 import { RiskBadge } from '../components/UIElements';
@@ -168,9 +170,66 @@ export const Investigate: React.FC<InvestigateProps> = ({
     }
   }, [selectedEvent]);
 
+  // Deduplicated list of candidates for the investigation dropdown
+  const candidateList = useMemo(() => {
+    const seen = new Set<string>();
+    const list: Array<{ id: string; displayId: string; label: string; priority: string; item: any }> = [];
+
+    // Prioritize tasks (officer assigned tasks)
+    tasks.forEach(ts => {
+      const cleanCode = (ts.task_id || '').replace(/^TSK-/, '');
+      const relId = ts.related_event_id || cleanCode;
+      
+      const key = cleanCode || relId || ts.task_id;
+      if (!seen.has(key)) {
+        seen.add(key);
+        if (relId) seen.add(relId);
+        if (ts.task_id) seen.add(ts.task_id);
+
+        list.push({
+          id: ts.task_id,
+          displayId: ts.task_id,
+          label: (ts.title || '').replace(/^Investigation:\s*/i, '') || ts.hazard_category || 'Operational Safety Observation',
+          priority: ts.priority || 'Medium',
+          item: ts
+        });
+      }
+    });
+
+    // Then any standalone events not already covered by a task
+    events.forEach(ev => {
+      const cleanCode = (ev.id || ev.report_code || '').replace(/^TSK-/, '');
+      if (!seen.has(ev.id) && !seen.has(cleanCode) && !seen.has(ev.report_code || '')) {
+        seen.add(ev.id);
+        if (cleanCode) seen.add(cleanCode);
+        if (ev.report_code) seen.add(ev.report_code);
+
+        list.push({
+          id: ev.id,
+          displayId: ev.id,
+          label: ev.hazard || ev.hazard_category || 'Operational Safety Observation',
+          priority: ev.risk_level || 'Medium',
+          item: ev
+        });
+      }
+    });
+
+    return list;
+  }, [tasks, events]);
+
   // Find active event or task
-  const activeItem = tasks.find(t => t.task_id === currentId || String(t.id) === currentId) ||
-                     events.find(e => e.id === currentId || e.report_code === currentId);
+  const activeItem = tasks.find(t => 
+    t.task_id === currentId || 
+    t.task_id === `TSK-${currentId}` || 
+    t.related_event_id === currentId || 
+    t.related_event_id === currentId.replace(/^TSK-/, '') ||
+    String(t.id) === currentId
+  ) || events.find(e => 
+    e.id === currentId || 
+    e.id === currentId.replace(/^TSK-/, '') || 
+    e.report_code === currentId ||
+    e.report_code === currentId.replace(/^TSK-/, '')
+  );
 
   // When active item changes, sync findings
   useEffect(() => {
@@ -300,14 +359,9 @@ export const Investigate: React.FC<InvestigateProps> = ({
             }}
             className="px-3 py-2 border border-slate-200 rounded-xl text-xs bg-white text-slate-800 font-bold focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] max-w-xs"
           >
-            {tasks.map(ts => (
-              <option key={ts.task_id} value={ts.task_id}>
-                {ts.task_id} — {ts.title.replace(/^Investigation:\s*/i, '')} ({ts.priority || 'Medium'})
-              </option>
-            ))}
-            {events.map(ev => (
-              <option key={ev.id} value={ev.id}>
-                {ev.id} — {ev.hazard || ev.site} ({ev.risk_level})
+            {candidateList.map(cand => (
+              <option key={cand.id} value={cand.id}>
+                {cand.displayId} — {cand.label} ({cand.priority})
               </option>
             ))}
           </select>
@@ -339,10 +393,22 @@ export const Investigate: React.FC<InvestigateProps> = ({
                   <MapPin className="h-3.5 w-3.5 text-[#008779] shrink-0" />
                   <span>{'site' in activeItem ? activeItem.site : 'Operational Site'} • {'unit' in activeItem ? activeItem.unit : 'Unit Area'}</span>
                 </div>
-                <div className="flex items-center gap-2 text-slate-500 font-medium text-[11px]">
-                  <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  <span>{'timestamp' in activeItem ? new Date(activeItem.timestamp).toLocaleString() : 'Recent Assignment'}</span>
+                <div className="flex items-center justify-between text-slate-500 font-medium text-[11px]">
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span>{'timestamp' in activeItem ? new Date(activeItem.timestamp).toLocaleDateString() : 'Recent Assignment'}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-amber-700 font-bold">
+                    <Clock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                    <span>{'due_date' in activeItem && activeItem.due_date ? new Date(activeItem.due_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Due: 24h'}</span>
+                  </div>
                 </div>
+                {Boolean((activeItem as any).team_size || (activeItem as any).people_involved) && (
+                  <div className="flex items-center gap-1.5 text-[#008779] font-bold text-[11px] pt-1 border-t border-slate-200/60">
+                    <Users className="h-3.5 w-3.5 shrink-0" />
+                    <span>Accompanying Team: {(activeItem as any).team_size || (activeItem as any).people_involved || 2} Field Worker(s)</span>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -444,19 +510,6 @@ export const Investigate: React.FC<InvestigateProps> = ({
                     className="w-full h-32 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:opacity-90 transition"
                   />
                 </div>
-              )}
-
-              {/* Quick Jump to AI Analysis */}
-              {onNavigateTo && (
-                <button
-                  type="button"
-                  onClick={() => onNavigateTo('ai-analysis', activeItem)}
-                  className="w-full mt-2 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl border border-blue-200 transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Sparkles className="h-3.5 w-3.5 text-blue-600" />
-                  <span>Inspect AI/NLP Reasoning</span>
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
               )}
             </div>
           ) : (
@@ -652,14 +705,6 @@ export const Investigate: React.FC<InvestigateProps> = ({
                     >
                       <ArrowLeft className="h-3.5 w-3.5" />
                       <span>Back to Assigned Reports</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onNavigateTo('ai-analysis', activeItem)}
-                      className="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Sparkles className="h-3.5 w-3.5 text-emerald-700" />
-                      <span>View AI Diagnostics</span>
                     </button>
                   </div>
                 )}

@@ -605,11 +605,21 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
                 </div>
 
                 {/* 2. WHERE & FACILITY LOCATION & STATUSES */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                   <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl">
                     <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Facility Location</span>
                     <div className="font-extrabold text-slate-900 truncate">{selectedTask.site || 'Site Alpha - Jamnagar Complex'}</div>
                     <div className="text-[10.5px] text-slate-500 mt-0.5 truncate">{selectedTask.unit || 'Unit 04 - FCCU'}</div>
+                  </div>
+
+                  {/* DEADLINE / DUE DATE */}
+                  <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Target Deadline</span>
+                    <div className="font-extrabold text-slate-900 truncate flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                      <span>{selectedTask.due_date ? new Date(selectedTask.due_date).toLocaleString() : 'Within 24 Hours'}</span>
+                    </div>
+                    <div className="text-[10.5px] text-slate-500 mt-0.5">Assigned by {selectedTask.assigned_by || 'HSE Manager'}</div>
                   </div>
 
                   {/* ASSIGNMENT STATUS */}
