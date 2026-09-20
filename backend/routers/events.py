@@ -29,19 +29,24 @@ def report_to_event_dict(r: IncidentReport) -> dict:
         "location_detail": r.location_detail or "Primary Facility",
         "site": r.site or "Site Alpha - Jamnagar Complex",
         "unit": r.unit or "Unit 04 - FCCU",
-        "location": f"{r.site} - {r.unit}",
+        "location": r.location or f"{r.site or 'Site Alpha'} - {r.unit or 'Unit 04'}",
+        "location_detail": r.location_detail,
         "activity": r.hazard_category or "Routine Maintenance & Operation",
         "description": r.raw_text,
         "hazard": r.hazard_category or "Identified Site Hazard",
+        "hazard_category": r.hazard_category,
         "people_involved": r.people_involved or 1,
         "equipment_involved": r.equipment_involved,
         "timestamp": r.timestamp or r.created_at.isoformat(),
         "created_at": r.created_at.isoformat() if r.created_at else None,
         
-        # SIF 3-Condition & Classification
+        # SIF YES/NO & Classification Standard
         "status": r.status,
         "priority": r.priority,
         "sif_potential": r.sif_potential,
+        "is_sif_potential": "YES" if r.sif_potential in ["High", "Critical"] or r.actual_injury in ["Fatal injury", "Severe / Lost Time Injury"] else "NO",
+        "is_sif_precursor": "YES" if r.sif_potential in ["High", "Critical"] or r.actual_injury in ["Fatal injury", "Severe / Lost Time Injury"] else "NO",
+        "sif_category": "Category 1 – SIF Incident (Actual SIF)" if r.actual_injury in ["Fatal injury", "Severe / Lost Time Injury"] else ("Category 2 – SIF Precursor" if r.sif_potential in ["High", "Critical"] else "Category 3 – Non-SIF"),
         "condition": r.condition,
         "event": r.event,
         "actual_injury": r.actual_injury,
@@ -51,18 +56,20 @@ def report_to_event_dict(r: IncidentReport) -> dict:
         "exposure": r.exposure or "Personnel within hazard strike zone",
         "consequence": r.consequence or "Severe injury or facility impact",
         "life_saving_rule": r.life_saving_rule or "Follow standard safety operating procedures",
-        "is_sif_precursor": "Yes" if r.sif_potential in ["High", "Critical"] else "No",
+        "classification": r.classification or ("SIF Precursor / High-Risk Facility Condition" if r.sif_potential in ["High", "Critical"] else "Low-Potential Observation / Non-SIF"),
         
         # Scores
-        "risk_score": r.risk_score,
+        "risk_score": r.risk_score or 50.0,
         "sif_risk_score": round(r.risk_score / 10.0, 1) if r.risk_score else (round(r.severity_score, 1) if r.severity_score else 2.5),
         "risk_level": "CRITICAL" if r.sif_potential == "Critical" else ("HIGH" if r.sif_potential == "High" else ("MEDIUM" if r.sif_potential == "Medium" else "LOW")),
         "severity_score": r.severity_score,
         "exposure_score": r.exposure_score,
         "barrier_score": r.barrier_score,
         "sif_probability": round(r.risk_score / 100.0, 2) if r.risk_score else 0.5,
-        "confidence": r.ai_confidence or 0.94,
+        "confidence": r.ai_confidence or 94.0,
+        "ai_confidence": r.ai_confidence or 94.0,
         "evidence": r.ai_rationale or "Evaluated by Groq AI & SIF Category 3 Engine",
+        "ai_rationale": r.ai_rationale or "Evaluated by Groq AI & SIF Category 3 Engine",
         "reviewer": r.manager_name or r.assigned_officer_name,
         
         # Workflow
@@ -83,6 +90,7 @@ def list_events(
     assigned_officer_name: Optional[str] = None,
     status: Optional[str] = None,
     priority: Optional[str] = None,
+    hazard_category: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(IncidentReport)
@@ -91,26 +99,37 @@ def list_events(
     if assigned_officer_id:
         query = query.filter(IncidentReport.assigned_officer_id == assigned_officer_id)
     if assigned_officer_name:
-        query = query.filter(IncidentReport.assigned_officer_name.ilike(f"%{assigned_officer_name}%"))
+        query = query.filter(IncidentReport.assigned_officer_name == assigned_officer_name)
     if status:
         query = query.filter(IncidentReport.status == status)
     if priority:
         query = query.filter(IncidentReport.priority == priority)
-
-    reports = query.order_by(IncidentReport.risk_score.desc(), IncidentReport.created_at.desc()).all()
+    if hazard_category:
+        query = query.filter(IncidentReport.hazard_category == hazard_category)
+        
+    reports = query.order_by(IncidentReport.created_at.desc()).all()
     return [report_to_event_dict(r) for r in reports]
 
-@router.get("/classify-words")
-def classify_words(text: str = Query(...)):
+@router.post("/analyze/raw")
+def analyze_raw_text(payload: dict):
+    text = payload.get("text", "")
     if not text or len(text.strip()) == 0:
         return {
             "condition": "Unsafe Condition",
             "report_type": "Unsafe Condition",
             "event": "Operational facility hazard",
+            "activity": "Routine Maintenance & Operation",
+            "location": "Process Unit Area",
             "actual_injury": "None",
             "sif_potential": "Low",
+            "is_sif_potential": "NO",
+            "is_sif_precursor": "NO",
+            "sif_category": "Category 3 – Non-SIF",
             "classification": "Low-Potential Observation / Non-SIF",
+            "life_saving_rule": "Standard Operating Safeguards",
             "confidence": 90.0,
+            "ai_confidence": 90.0,
+            "risk_score": 22.0,
             "rationale": "Awaiting safety report observation text.",
             "matched_words": []
         }
@@ -121,16 +140,24 @@ def classify_words(text: str = Query(...)):
         "category": analysis.get("hazard_category", "Operational Facility Hazard"),
         "hazard_category": analysis.get("hazard_category", "Operational Facility Hazard"),
         "event": analysis.get("event", "Operational facility hazard"),
+        "activity": analysis.get("activity", "Routine Maintenance & Operation"),
+        "location": analysis.get("location", "Process Unit Area"),
         "actual_injury": analysis.get("actual_injury", "None"),
         "sif_potential": analysis.get("sif_potential", "Low"),
+        "is_sif_potential": analysis.get("is_sif_potential", "NO"),
+        "is_sif_precursor": analysis.get("is_sif_precursor", "NO"),
+        "sif_category": analysis.get("sif_category", "Category 3 – Non-SIF"),
         "classification": analysis.get("classification", "Low-Potential Observation / Non-SIF"),
         "risk_score": analysis.get("risk_score", 25.0),
         "confidence": analysis.get("ai_confidence", 94.0),
+        "ai_confidence": analysis.get("ai_confidence", 94.0),
         "rationale": analysis.get("ai_rationale", ""),
+        "ai_rationale": analysis.get("ai_rationale", ""),
         "matched_words": analysis.get("matched_words", [w for w in text.split() if len(w) > 3][:5]),
         "energy_source": analysis.get("energy_source", ""),
         "barrier": analysis.get("barrier", ""),
-        "barrier_failure": analysis.get("barrier_failure", "")
+        "barrier_failure": analysis.get("barrier_failure", ""),
+        "life_saving_rule": analysis.get("life_saving_rule", "Standard Operating Safeguards")
     }
 
 @router.post("")

@@ -226,7 +226,7 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
     const d = new Date(Date.now() + 24 * 3600000);
     const pad = (n: number) => n.toString().padStart(2, '0');
     setAssignDeadline(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
-    setAssignInstructions(`Conduct on-site field hazard verification for ${report.report_code || report.id}. Verify physical barriers, assess hazard exposure zone, and record corrective measures.`);
+    setAssignInstructions('');
   };
 
   const handleCloseViewModal = () => {
@@ -258,7 +258,9 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
         assigned_officer_id: Number(selectedOfficerId),
         assigned_officer_name: officerName,
         priority: assignPriority,
-        instructions: `${assignInstructions.trim()} [Accompanying Team Size: ${assignTeamSize} Worker(s)] [Deadline: ${new Date(dueDate).toLocaleString()}]`,
+        instructions: assignInstructions.trim()
+          ? `${assignInstructions.trim()} [Accompanying Team Size: ${assignTeamSize} Worker(s)] [Deadline: ${new Date(dueDate).toLocaleString()}]`
+          : `[Accompanying Team Size: ${assignTeamSize} Worker(s)] [Deadline: ${new Date(dueDate).toLocaleString()}]`,
         due_days: assignDueDays,
         due_date: dueDate,
         team_size: assignTeamSize,

@@ -23,6 +23,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { OfficerTask, SafetyEvent, User as UserType } from '../types';
+import { AiOutputCard } from '../components/AiOutputCard';
 
 interface AssignedReportsProps {
   user?: UserType | null;
@@ -646,54 +647,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
                 </div>
 
                 {/* 3. AI OUTPUT DIAGNOSTICS CARD */}
-                <div className="bg-[#0A1120] rounded-2xl p-4 sm:p-5 text-white font-mono shadow-md border border-slate-800 space-y-3.5">
-                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-800/80">
-                    <div className="flex items-center gap-2 text-[#00E5A3] font-bold text-xs tracking-wider">
-                      <Sparkles className="h-4 w-4" />
-                      <span>AI OUTPUT:</span>
-                    </div>
-                    <span className="text-[10.5px] font-medium bg-[#1E293B] text-slate-300 px-3 py-1 rounded-full border border-slate-700/60 shadow-xs">
-                      {(selectedTask as any)?.confidence ? `${((selectedTask as any).confidence * 100).toFixed(1)}%` : '96.2%'} Model Certitude
-                    </span>
-                  </div>
-
-                  <div className="space-y-2.5 text-xs">
-                    <div className="flex items-start gap-3">
-                      <span className="text-slate-400 w-32 shrink-0">Condition:</span>
-                      <span className="text-amber-400 font-bold">
-                        {condition}
-                      </span>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <span className="text-slate-400 w-32 shrink-0">Event:</span>
-                      <span className="text-slate-100 font-medium">
-                        {(selectedTask as any).hazard_category || (selectedTask as any).hazard || (selectedTask.title || '').replace(/^Investigation:\s*/i, '') || 'Oil / chemical leakage & spill'}
-                      </span>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <span className="text-slate-400 w-32 shrink-0">Actual injury:</span>
-                      <span className="text-emerald-400 font-medium">
-                        {(selectedTask as any).people_involved && (selectedTask as any).people_involved > 0 ? `${(selectedTask as any).people_involved} Worker(s) Involved` : 'None'}
-                      </span>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <span className="text-slate-400 w-32 shrink-0">SIF potential:</span>
-                      <span className={`font-bold ${isHighSif ? 'text-red-400' : 'text-rose-400'}`}>
-                        {priority}
-                      </span>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <span className="text-slate-400 w-32 shrink-0">Classification:</span>
-                      <span className="text-purple-400 font-medium">
-                        {isHighSif ? 'High-Potential Precursor / SIF Alert' : 'Low-Potential Observation / Non-SIF'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                <AiOutputCard data={selectedTask} />
 
                 {/* 4. MANAGER INSTRUCTIONS */}
                 {selectedTask.instructions && (

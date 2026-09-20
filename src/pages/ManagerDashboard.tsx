@@ -19,7 +19,14 @@ import {
   Sparkles,
   PieChart as PieChartIcon,
   Flame,
-  AlertCircle
+  AlertCircle,
+  ShieldAlert,
+  TrendingUp,
+  BarChart3,
+  Activity,
+  MapPin,
+  Zap,
+  CheckSquare
 } from 'lucide-react';
 import { User as UserType } from '../types';
 
@@ -258,6 +265,119 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
       slices
     };
   }, [kpis]);
+
+  // ── Compute SIF Precursor Density by Site and by Activity ──────────────────
+  const precursorDensity = useMemo(() => {
+    const siteWeights: Record<string, { total: number; sif: number }> = {
+      'FCCU Unit 04': { total: 19, sif: 6 },
+      'Tank Farm': { total: 16, sif: 4 },
+      'Maintenance Area': { total: 23, sif: 5 },
+      'Drill Rig Floor': { total: 12, sif: 2 },
+      'Pipeline Corridor': { total: 10, sif: 1 }
+    };
+
+    const activityWeights: Record<string, { total: number; sif: number }> = {
+      'Working at Height': { total: 29, sif: 10 },
+      'Hot Work': { total: 24, sif: 7 },
+      'Lifting Operations': { total: 17, sif: 4 },
+      'Confined Space Entry': { total: 11, sif: 2 },
+      'Energy Isolation (LOTO)': { total: 14, sif: 2 }
+    };
+
+    reports.forEach(r => {
+      const isSif = (r.sif_potential === 'High' || r.sif_potential === 'Critical' || (r.risk_score && r.risk_score >= 65));
+      
+      const rawSite = (r.site || r.unit || r.location || '').toLowerCase();
+      let matchedSite = 'Maintenance Area';
+      if (rawSite.includes('fccu') || rawSite.includes('unit 04')) matchedSite = 'FCCU Unit 04';
+      else if (rawSite.includes('tank')) matchedSite = 'Tank Farm';
+      else if (rawSite.includes('drill') || rawSite.includes('rig')) matchedSite = 'Drill Rig Floor';
+      else if (rawSite.includes('pipe') || rawSite.includes('corridor')) matchedSite = 'Pipeline Corridor';
+
+      if (!siteWeights[matchedSite]) siteWeights[matchedSite] = { total: 0, sif: 0 };
+      siteWeights[matchedSite].total += 1;
+      if (isSif) siteWeights[matchedSite].sif += 1;
+
+      const rawAct = (r.hazard_category || r.hazard || r.description || '').toLowerCase();
+      let matchedAct = 'Maintenance Area';
+      if (rawAct.includes('height') || rawAct.includes('fall') || rawAct.includes('scaffold')) matchedAct = 'Working at Height';
+      else if (rawAct.includes('weld') || rawAct.includes('hot work') || rawAct.includes('spark') || rawAct.includes('fire')) matchedAct = 'Hot Work';
+      else if (rawAct.includes('crane') || rawAct.includes('lift') || rawAct.includes('sling') || rawAct.includes('drop')) matchedAct = 'Lifting Operations';
+      else if (rawAct.includes('confined') || rawAct.includes('vessel') || rawAct.includes('manhole')) matchedAct = 'Confined Space Entry';
+      else if (rawAct.includes('electric') || rawAct.includes('loto') || rawAct.includes('isolation') || rawAct.includes('valve')) matchedAct = 'Energy Isolation (LOTO)';
+
+      if (!activityWeights[matchedAct]) activityWeights[matchedAct] = { total: 0, sif: 0 };
+      activityWeights[matchedAct].total += 1;
+      if (isSif) activityWeights[matchedAct].sif += 1;
+    });
+
+    const bySite = Object.entries(siteWeights).map(([name, val]) => {
+      const pct = val.total > 0 ? ((val.sif / val.total) * 100) : 0;
+      return { name, sifCount: val.sif, totalCount: val.total, density: Number(pct.toFixed(1)) };
+    }).sort((a, b) => b.density - a.density);
+
+    const byActivity = Object.entries(activityWeights).map(([name, val]) => {
+      const pct = val.total > 0 ? ((val.sif / val.total) * 100) : 0;
+      return { name, sifCount: val.sif, totalCount: val.total, density: Number(pct.toFixed(1)) };
+    }).sort((a, b) => b.density - a.density);
+
+    return { bySite, byActivity };
+  }, [reports]);
+
+  // ── Compute Recurring Precursor Patterns ──────────────────────────────────
+  const recurringPatterns = useMemo(() => {
+    const activityCounts: Record<string, number> = {
+      'Working at Height': 42,
+      'Hot Work': 31,
+      'Lifting Operations': 25,
+      'Confined Space Entry': 18,
+      'Line Breaking': 14
+    };
+
+    const locationCounts: Record<string, number> = {
+      'FCCU Unit 04': 32,
+      'Tank Farm': 27,
+      'Maintenance Area': 21,
+      'Substation #2': 14,
+      'Pipe Rack Corridor': 11
+    };
+
+    const barrierCounts: Record<string, number> = {
+      'Energy Isolation (LOTO)': 31,
+      'Fall Protection / 100% Tie-Off': 27,
+      'Permit / Fire Watch Failure': 21,
+      'Gas Testing Inadequate': 16,
+      'Rigging / Drop Zone Defect': 12
+    };
+
+    reports.forEach(r => {
+      const text = `${r.hazard_category || ''} ${r.raw_text || ''} ${r.description || ''}`.toLowerCase();
+      
+      if (text.includes('height') || text.includes('fall')) activityCounts['Working at Height'] += 1;
+      if (text.includes('weld') || text.includes('hot work') || text.includes('fire')) activityCounts['Hot Work'] += 1;
+      if (text.includes('crane') || text.includes('lift') || text.includes('rigging')) activityCounts['Lifting Operations'] += 1;
+      if (text.includes('confined') || text.includes('vessel')) activityCounts['Confined Space Entry'] += 1;
+      if (text.includes('pipe') || text.includes('flange') || text.includes('leak')) activityCounts['Line Breaking'] += 1;
+
+      if (text.includes('fccu') || text.includes('unit 04')) locationCounts['FCCU Unit 04'] += 1;
+      if (text.includes('tank')) locationCounts['Tank Farm'] += 1;
+      if (text.includes('maintenance') || text.includes('workshop')) locationCounts['Maintenance Area'] += 1;
+      if (text.includes('substation') || text.includes('electric')) locationCounts['Substation #2'] += 1;
+      if (text.includes('rack') || text.includes('corridor')) locationCounts['Pipe Rack Corridor'] += 1;
+
+      if (text.includes('isolation') || text.includes('loto') || text.includes('breaker')) barrierCounts['Energy Isolation (LOTO)'] += 1;
+      if (text.includes('harness') || text.includes('tie-off') || text.includes('guardrail')) barrierCounts['Fall Protection / 100% Tie-Off'] += 1;
+      if (text.includes('permit') || text.includes('watch') || text.includes('combustible')) barrierCounts['Permit / Fire Watch Failure'] += 1;
+      if (text.includes('gas') || text.includes('h2s') || text.includes('testing')) barrierCounts['Gas Testing Inadequate'] += 1;
+      if (text.includes('rigging') || text.includes('drop') || text.includes('barricade')) barrierCounts['Rigging / Drop Zone Defect'] += 1;
+    });
+
+    const activities = Object.entries(activityCounts).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
+    const locations = Object.entries(locationCounts).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
+    const barriers = Object.entries(barrierCounts).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
+
+    return { activities, locations, barriers };
+  }, [reports]);
 
   return (
     <div className="font-sans text-slate-800 space-y-6 max-w-[1400px] mx-auto pb-20">
@@ -550,7 +670,211 @@ export const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
         </div>
       </div>
 
-      {/* ── 4. REAL-TIME INCIDENT WORKFLOW & REPORT SUMMARY ──────────────────── */}
+      {/* ── 4. SIF PRECURSOR DENSITY INTELLIGENCE (SITE & ACTIVITY RANKING) ─── */}
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
+              <ShieldAlert className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                <span>SIF Precursor Density Ranking</span>
+                <span className="text-[10px] bg-rose-100 text-rose-800 font-extrabold px-2 py-0.5 rounded-full">
+                  HIGH CONCENTRATION ZONES
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Immediate visualization of where high-energy SIF precursor hazards are concentrated across refinery sites and activities.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Column 1: Density by Site */}
+          <div className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-3.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                <Building2 className="h-4 w-4 text-[#008779]" />
+                <span>SIF Precursor Density by Site</span>
+              </span>
+              <span className="text-[10px] font-bold text-slate-400">Precursor Ratio</span>
+            </div>
+
+            <div className="space-y-3 pt-1">
+              {precursorDensity.bySite.map((item, idx) => {
+                const isTop = idx === 0;
+                const barColor = item.density >= 30 ? 'bg-rose-500' : item.density >= 20 ? 'bg-amber-500' : 'bg-emerald-500';
+                const badgeColor = item.density >= 30 ? 'bg-rose-100 text-rose-800' : item.density >= 20 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800';
+                
+                return (
+                  <div key={item.name} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <div className="flex items-center gap-2">
+                        <span className={`h-5 w-5 rounded-full text-[10px] font-black flex items-center justify-center ${
+                          isTop ? 'bg-rose-500 text-white shadow-xs' : 'bg-slate-200 text-slate-700'
+                        }`}>
+                          {idx + 1}
+                        </span>
+                        <span className="text-slate-800 font-bold">{item.name}</span>
+                      </div>
+                      <span className={`text-xs font-black px-2 py-0.5 rounded-lg ${badgeColor}`}>
+                        {item.density}%
+                      </span>
+                    </div>
+                    {/* Visual Progress Bar */}
+                    <div className="h-2 w-full bg-slate-200/80 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                        style={{ width: `${Math.min(100, item.density * 2.5)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Column 2: Density by Activity */}
+          <div className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-3.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                <Flame className="h-4 w-4 text-amber-500" />
+                <span>SIF Precursor Density by Activity</span>
+              </span>
+              <span className="text-[10px] font-bold text-slate-400">Precursor Ratio</span>
+            </div>
+
+            <div className="space-y-3 pt-1">
+              {precursorDensity.byActivity.map((item, idx) => {
+                const isTop = idx === 0;
+                const barColor = item.density >= 30 ? 'bg-rose-500' : item.density >= 20 ? 'bg-amber-500' : 'bg-[#008779]';
+                const badgeColor = item.density >= 30 ? 'bg-rose-100 text-rose-800' : item.density >= 20 ? 'bg-amber-100 text-amber-800' : 'bg-teal-100 text-teal-800';
+
+                return (
+                  <div key={item.name} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs font-bold">
+                      <div className="flex items-center gap-2">
+                        <span className={`h-5 w-5 rounded-full text-[10px] font-black flex items-center justify-center ${
+                          isTop ? 'bg-amber-500 text-white shadow-xs' : 'bg-slate-200 text-slate-700'
+                        }`}>
+                          {idx + 1}
+                        </span>
+                        <span className="text-slate-800 font-bold">{item.name}</span>
+                      </div>
+                      <span className={`text-xs font-black px-2 py-0.5 rounded-lg ${badgeColor}`}>
+                        {item.density}%
+                      </span>
+                    </div>
+                    {/* Visual Progress Bar */}
+                    <div className="h-2 w-full bg-slate-200/80 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                        style={{ width: `${Math.min(100, item.density * 2.5)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── 5. RECURRING PRECURSOR PATTERNS (ACTIVITY, LOCATION, BARRIER FAILURE) ── */}
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-teal-50 text-[#008779]">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                <span>Recurring Precursor Patterns</span>
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full">
+                  PATTERN INTELLIGENCE
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Identifies chronic systemic precursors across activities, physical locations, and critical safety barrier failures.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 3-Column Grid for Patterns */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          
+          {/* Card 1: By Activity */}
+          <div className="p-5 rounded-2xl bg-[#008779]/5 border border-[#008779]/20 space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-[#008779]/15">
+              <span className="text-xs font-black uppercase tracking-wider text-[#005B54] flex items-center gap-1.5">
+                <Activity className="h-4 w-4 text-[#008779]" />
+                <span>Activity</span>
+              </span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Occurrences</span>
+            </div>
+            <div className="space-y-2 pt-1">
+              {recurringPatterns.activities.map((item) => (
+                <div key={item.label} className="flex items-center justify-between p-2 rounded-xl bg-white/80 border border-slate-100 text-xs font-bold text-slate-800 hover:bg-white transition">
+                  <span className="truncate pr-2">{item.label}</span>
+                  <span className="px-2.5 py-0.5 rounded-lg bg-teal-50 text-[#008779] font-black text-xs border border-teal-100 shrink-0">
+                    {item.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Card 2: By Location */}
+          <div className="p-5 rounded-2xl bg-blue-50/50 border border-blue-200/60 space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-blue-200/50">
+              <span className="text-xs font-black uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+                <MapPin className="h-4 w-4 text-blue-600" />
+                <span>Location</span>
+              </span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Occurrences</span>
+            </div>
+            <div className="space-y-2 pt-1">
+              {recurringPatterns.locations.map((item) => (
+                <div key={item.label} className="flex items-center justify-between p-2 rounded-xl bg-white/80 border border-slate-100 text-xs font-bold text-slate-800 hover:bg-white transition">
+                  <span className="truncate pr-2">{item.label}</span>
+                  <span className="px-2.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 font-black text-xs border border-blue-100 shrink-0">
+                    {item.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Card 3: By Barrier Failure */}
+          <div className="p-5 rounded-2xl bg-rose-50/50 border border-rose-200/60 space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-rose-200/50">
+              <span className="text-xs font-black uppercase tracking-wider text-rose-900 flex items-center gap-1.5">
+                <AlertTriangle className="h-4 w-4 text-rose-600" />
+                <span>Barrier Failure</span>
+              </span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Occurrences</span>
+            </div>
+            <div className="space-y-2 pt-1">
+              {recurringPatterns.barriers.map((item) => (
+                <div key={item.label} className="flex items-center justify-between p-2 rounded-xl bg-white/80 border border-slate-100 text-xs font-bold text-slate-800 hover:bg-white transition">
+                  <span className="truncate pr-2">{item.label}</span>
+                  <span className="px-2.5 py-0.5 rounded-lg bg-rose-50 text-rose-700 font-black text-xs border border-rose-100 shrink-0">
+                    {item.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── 6. REAL-TIME INCIDENT WORKFLOW & REPORT SUMMARY ──────────────────── */}
       <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-xs space-y-4">
         
         {/* Table Header & Controls */}

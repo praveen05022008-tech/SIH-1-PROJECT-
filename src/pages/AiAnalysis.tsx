@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { SafetyEvent, User } from '../types';
 import { RiskBadge } from '../components/UIElements';
+import { AiOutputCard } from '../components/AiOutputCard';
 
 interface AiAnalysisProps {
   user?: User | null;
@@ -247,27 +248,7 @@ export const AiAnalysis: React.FC<AiAnalysisProps> = ({
             <div className="lg:col-span-2 space-y-6">
 
               {/* AI Output Standard Breakdown Card */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm text-slate-100 font-mono text-xs space-y-2">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-emerald-400" />
-                    <span className="text-xs font-black text-emerald-400 uppercase tracking-wide">
-                      AI output:
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-sans font-bold bg-slate-800 px-2.5 py-0.5 rounded-full">
-                    {confidenceScore}% Model Certitude
-                  </span>
-                </div>
-
-                <div className="space-y-1.5 pt-1 text-[12px] leading-relaxed">
-                  <div><span className="text-slate-400 min-w-[120px] inline-block font-sans">Condition:</span> <span className="text-amber-300 font-bold">{activeEvent.condition || activeEvent.report_type || 'Unsafe Act'}</span></div>
-                  <div><span className="text-slate-400 min-w-[120px] inline-block font-sans">Event:</span> <span className="text-white font-bold">{activeEvent.event || activeEvent.hazard || 'Fall from height'}</span></div>
-                  <div><span className="text-slate-400 min-w-[120px] inline-block font-sans">Actual injury:</span> <span className="text-emerald-300 font-bold">{activeEvent.actual_injury || 'None'}</span></div>
-                  <div><span className="text-slate-400 min-w-[120px] inline-block font-sans">SIF potential:</span> <span className="text-rose-400 font-bold">{activeEvent.sif_potential || (isSifPrecursor ? 'High' : 'Medium')}</span></div>
-                  <div><span className="text-slate-400 min-w-[120px] inline-block font-sans">Classification:</span> <span className="text-purple-300 font-bold">{activeEvent.classification || (isSifPrecursor ? 'SIF Precursor / High-Potential Near Miss' : 'Low-Potential Observation / Non-SIF')}</span></div>
-                </div>
-              </div>
+              <AiOutputCard data={activeEvent} />
 
               {/* Extracted Entities Card */}
               <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-2xs space-y-5">

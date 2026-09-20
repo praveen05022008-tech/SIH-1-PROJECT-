@@ -11,6 +11,78 @@ def extract_condition_type(text: str) -> str:
         return "Near Miss"
     return "Unsafe Condition"
 
+def extract_activity(text: str) -> str:
+    tl = text.lower()
+    if re.search(r'\b(weld|welding|grind|grinding|cutting|torch|hot\s+work|spark|flame)\b', tl):
+        return "Hot Work"
+    if re.search(r'\b(height|scaffold|ladder|derrick|climb|roof|platform|fall|elevation)\b', tl):
+        return "Working at Height"
+    if re.search(r'\b(crane|rigging|sling|lifting|hoist|suspended|dropped\s+load)\b', tl):
+        return "Lifting Operations"
+    if re.search(r'\b(confined\s+space|vessel\s+entry|tank\s+entry|manhole|pit\s+entry)\b', tl):
+        return "Confined Space Entry"
+    if re.search(r'\b(loto|lockout|tagout|electrical|isolation|breaker|live\s+circuit|line\s+break)\b', tl):
+        return "Energy Isolation (LOTO)"
+    if re.search(r'\b(pressure|flange|valve|blowout|gas\s+leak|piping|gasket)\b', tl):
+        return "Pressurized Systems & Flange Work"
+    if re.search(r'\b(forklift|truck|vehicle|loader|traffic|reversing|heavy\s+equipment)\b', tl):
+        return "Mobile Equipment Operation"
+    if re.search(r'\b(excavation|trench|digging|earth\s+moving)\b', tl):
+        return "Excavation Work"
+    if re.search(r'\b(chemical|acid|toxic|h2s|solvent|corrosive|sampling)\b', tl):
+        return "Chemical & Toxic Handling"
+    if re.search(r'\b(cleaning|waste|pallet|trash|housekeeping|sweep)\b', tl):
+        return "Housekeeping & Storage"
+    return "Routine Maintenance & Operation"
+
+def extract_location(text: str) -> str:
+    tl = text.lower()
+    if re.search(r'\b(fuel\s+storage|fuel\s+tank|diesel\s+tank|fuel\s+area)\b', tl):
+        return "Fuel Storage Area"
+    if re.search(r'\b(tank\s+farm|tank\s+0|storage\s+tank|tank\s+area)\b', tl):
+        return "Tank Farm"
+    if re.search(r'\b(fccu|fccu\s+unit|fccu\s+unit\s+04|unit\s+04|fluid\s+catalytic)\b', tl):
+        return "FCCU Unit 04"
+    if re.search(r'\b(pipe\s+rack|rack\s+level|manifold|piping\s+corridor)\b', tl):
+        return "Pipe Rack Corridor"
+    if re.search(r'\b(drill|derrick|rig\s+floor|wellhead|drilling\s+pad)\b', tl):
+        return "Drill Rig Floor"
+    if re.search(r'\b(compressor|compressor\s+house|compressor\s+building)\b', tl):
+        return "Compressor House"
+    if re.search(r'\b(pump\s+house|pump\s+station|pump\s+room)\b', tl):
+        return "Pump House Station"
+    if re.search(r'\b(substation|switchgear|electrical\s+room|transformer)\b', tl):
+        return "Substation #2 Electrical Bay"
+    if re.search(r'\b(flare|flare\s+stack|flare\s+line)\b', tl):
+        return "Flare Stack Area"
+    if re.search(r'\b(warehouse|store|storage\s+yard|laydown)\b', tl):
+        return "Central Warehouse & Yard"
+    if re.search(r'\b(boiler|boiler\s+house|steam\s+plant)\b', tl):
+        return "Boiler Plant #1"
+    return "Process Unit Area"
+
+def extract_life_saving_rule(activity: str, hazard_cat: str, text: str) -> str:
+    tl = text.lower()
+    if "hot work" in activity.lower() or "weld" in tl or "fire" in tl:
+        return "Hot Work / Work Authorization"
+    if "height" in activity.lower() or "scaffold" in tl or "fall" in tl:
+        return "Working at Height / 100% Tie-Off"
+    if "energy isolation" in activity.lower() or "electric" in tl or "loto" in tl:
+        return "Energy Isolation (LOTO)"
+    if "confined space" in activity.lower() or "vessel" in tl:
+        return "Confined Space Entry"
+    if "lifting" in activity.lower() or "crane" in tl or "rigging" in tl:
+        return "Safe Mechanical Lifting & Rigging"
+    if "pressure" in activity.lower() or "line break" in tl or "leak" in tl:
+        return "Line Breaking & Pressure Isolation"
+    if "equipment" in activity.lower() or "vehicle" in tl:
+        return "Line of Fire & Mobile Equipment Exclusion"
+    if "chemical" in activity.lower() or "toxic" in tl or "h2s" in tl:
+        return "Hazardous Chemical / Toxic Gas Protection"
+    if "bypassed" in tl or "unhooked" in tl:
+        return "Bypassing Safety Critical Controls"
+    return "Standard Operating Safeguards"
+
 def extract_hazard_category(text: str) -> str:
     tl = text.lower()
     if re.search(r'\b(fall|height|scaffold|ladder|derrick|railing|platform|roof|open\s+edge)\b', tl):
@@ -43,6 +115,9 @@ def compute_rule_based_sif(text: str) -> dict:
     tl = text.lower()
     condition = extract_condition_type(text)
     hazard_cat = extract_hazard_category(text)
+    activity = extract_activity(text)
+    location = extract_location(text)
+    lsr = extract_life_saving_rule(activity, hazard_cat, text)
 
     # Actual Injury Detection
     if re.search(r'\b(fatal|fatality|death|died|killed)\b', tl):
@@ -76,30 +151,35 @@ def compute_rule_based_sif(text: str) -> dict:
     barrier_failure = "Safeguard compromised or procedural lapse"
     if "fall" in tl or "height" in tl or "scaffold" in tl:
         barrier = "100% Tie-Off Full Body Harness & Certified Anchor Point"
-        barrier_failure = "Lanyard unhooked / missing guardrail at elevation"
+        barrier_failure = "Fall Protection / Lanyard Unhooked"
     elif "pressure" in tl or "valve" in tl or "leak" in tl or "gas" in tl:
         barrier = "Pressure Containment Integrity & Isolation Valves"
-        barrier_failure = "Gasket/seal failure under pressure"
-    elif "electric" in tl:
+        barrier_failure = "Pressure Barrier Compromised / Gasket Leak"
+    elif "electric" in tl or "loto" in tl:
         barrier = "LOTO Lockout/Tagout & Dielectric Insulation"
-        barrier_failure = "Live circuit uninsulated / incomplete isolation"
-    elif "fire" in tl or "spark" in tl or "welding" in tl:
-        barrier = "Hot Work Permit & Fire Retardant Habitat"
-        barrier_failure = "Inadequate fire watch / combustible materials nearby"
+        barrier_failure = "Energy Isolation / LOTO Incomplete"
+    elif "fire" in tl or "spark" in tl or "welding" in tl or "hot work" in tl:
+        barrier = "Hot Work Permit & Fire Protection Barrier"
+        barrier_failure = "Fire Protection Missing / Inadequate Watch"
     elif "drop" in tl or "crane" in tl:
         barrier = "Rigging Inspection & Barricaded Drop Zone Exclusion"
-        barrier_failure = "Improper rigging / personnel within swing perimeter"
+        barrier_failure = "Rigging Failure / Drop Zone Unbarricaded"
+    elif "confined" in tl or "vessel" in tl:
+        barrier = "Continuous Gas Testing & Entry Attendant"
+        barrier_failure = "Gas Testing Inadequate / Entry Permit Lapse"
     elif "pallet" in tl or "housekeeping" in tl or "damage" in tl:
         barrier = "Routine Inspection & Walkway Clearance Standards"
-        barrier_failure = "Equipment wear or delayed housekeeping"
+        barrier_failure = "Housekeeping Lapse / Walkway Obstructed"
 
     # SIF Potential Determination (Campbell Institute Category 3 logic)
     is_critical = bool(re.search(r'\b(fatal|death|blowout|explosion|h2s|electrocution|amputation|catastrophic|unconscious)\b', tl))
-    is_high = bool(re.search(r'\b(without\s+harness|unhooked|scaffold|fell\s+inches|dropped.*crane|high\s+pressure|gas\s+leak|live\s+wire|confined\s+space|rupture|suspended\s+load)\b', tl))
+    is_high = bool(re.search(r'\b(without\s+harness|unhooked|scaffold|fell\s+inches|dropped.*crane|high\s+pressure|gas\s+leak|live\s+wire|confined\s+space|rupture|suspended\s+load|welding.*fuel|fuel.*weld|spark.*tank)\b', tl))
     is_low = bool(re.search(r'\b(housekeeping|pallet|trash|scratch|paint|faded|minor\s+damage|damage\s+on\s+casing|wear|cosmetic|cleaning)\b', tl)) and not is_high and not is_critical
 
     if is_critical or actual_injury in ["Fatal injury", "Severe / Lost Time Injury"]:
         sif_potential = "Critical"
+        is_sif_potential = "YES"
+        sif_category = "Category 1 – SIF Incident (Actual SIF)" if actual_injury in ["Fatal injury", "Severe / Lost Time Injury"] else "Category 2 – SIF Precursor"
         severity_score = 9.5
         exposure_score = 9.0
         barrier_score = 8.5
@@ -107,13 +187,17 @@ def compute_rule_based_sif(text: str) -> dict:
         priority = "Critical"
     elif is_high:
         sif_potential = "High"
+        is_sif_potential = "YES"
+        sif_category = "Category 2 – SIF Precursor"
         severity_score = 8.2
         exposure_score = 7.5
         barrier_score = 7.8
-        risk_score = 78.5
+        risk_score = 87.0
         priority = "High"
     elif is_low:
         sif_potential = "Low"
+        is_sif_potential = "NO"
+        sif_category = "Category 3 – Non-SIF"
         severity_score = 2.5
         exposure_score = 2.0
         barrier_score = 2.5
@@ -121,6 +205,8 @@ def compute_rule_based_sif(text: str) -> dict:
         priority = "Low"
     else:
         sif_potential = "Medium"
+        is_sif_potential = "NO"
+        sif_category = "Category 3 – Non-SIF"
         severity_score = 5.0
         exposure_score = 4.5
         barrier_score = 5.0
@@ -150,17 +236,22 @@ def compute_rule_based_sif(text: str) -> dict:
     matched = [w for w in re.findall(r'\b[a-zA-Z]{4,}\b', text)][:6]
 
     rationale = (
-        f"Evaluated '{text}'. Classified as {condition} ({hazard_cat}). "
-        f"Energy level: {energy_source}. Barrier status: {barrier_failure}. "
-        f"Resulting in {sif_potential} SIF Potential -> {classification}."
+        f"Evaluated '{text}'. Classified as {condition} in {location} ({activity}). "
+        f"Energy: {energy_source}. Barrier Failure: {barrier_failure}. "
+        f"SIF Potential: {is_sif_potential} -> {sif_category} (Score: {risk_score:.0f}/100)."
     )
 
     return {
         "condition": condition,
         "hazard_category": hazard_cat,
         "event": hazard_cat,
+        "activity": activity,
+        "location": location,
         "actual_injury": actual_injury,
         "sif_potential": sif_potential,
+        "is_sif_potential": is_sif_potential,
+        "is_sif_precursor": is_sif_potential,
+        "sif_category": sif_category,
         "classification": classification,
         "priority": priority,
         "energy_source": energy_source,
@@ -168,12 +259,12 @@ def compute_rule_based_sif(text: str) -> dict:
         "barrier_failure": barrier_failure,
         "exposure": f"Personnel in proximity to {hazard_cat.lower()}",
         "consequence": f"Risk assessment outcome for {hazard_cat.lower()}",
-        "life_saving_rule": f"Enforce {barrier} before task execution",
+        "life_saving_rule": lsr,
         "risk_score": risk_score,
         "severity_score": severity_score,
         "exposure_score": exposure_score,
         "barrier_score": barrier_score,
-        "ai_confidence": 92.0,
+        "ai_confidence": 94.0,
         "ai_rationale": rationale,
         "matched_words": matched
     }
@@ -181,6 +272,7 @@ def compute_rule_based_sif(text: str) -> dict:
 def analyze_sif_report(text: str) -> dict:
     """
     Analyzes incident text using Groq AI (OpenAI-compatible) with fallback to local SIF Category 3 engine.
+    Extracts SIF Potential (YES/NO), Category 1/2/3, Activity, Location, Barrier Failure, Energy Source & Life-Saving Rule.
     """
     if not text or len(text.strip()) == 0:
         return compute_rule_based_sif("Routine safety observation")
@@ -193,45 +285,30 @@ def analyze_sif_report(text: str) -> dict:
     }
 
     system_prompt = (
-        "You are an elite Industrial Safety & SIF (Serious Injury or Fatality) AI engine following Campbell Institute & IOGP SIF Category 3 Precursor standards.\n"
-        "Analyze the given safety observation text and output a valid JSON object with EXACT keys:\n"
-        "- condition: Exactly one of ['Unsafe Act', 'Unsafe Condition', 'Near Miss']\n"
-        "  * 'Unsafe Act': Human behavioral deviation / safety procedure non-compliance (e.g., working without harness, not wearing PPE, bypassing interlock, texting while driving).\n"
-        "  * 'Unsafe Condition': Physical / environmental / mechanical defect (e.g., corroded pipe, oil puddle, broken ladder, damaged valve, missing guardrail, equipment wear).\n"
-        "  * 'Near Miss': High energy event or dropped object that occurred and narrowly missed hitting personnel without injury.\n"
-        "- event: Descriptive event mechanism (e.g., 'Fall from height', 'Dropped object / Suspended load', 'Pressurized fluid / gas release', 'Equipment wear & minor damage', 'Oil / chemical leakage & spill', 'Housekeeping & walkway obstruction', etc.)\n"
-        "- actual_injury: Exactly one of ['Fatal injury', 'Severe / Lost Time Injury', 'First Aid / Minor Injury', 'None']\n"
-        "- sif_potential: Exactly one of ['Critical', 'High', 'Medium', 'Low']\n"
-        "  * 'Critical': Life-threatening catastrophe (explosion, H2S toxic gas, fatality, major blowout).\n"
-        "  * 'High': High-energy source + compromised barrier + worker in strike zone (e.g. height > 1.8m without harness, heavy suspended load drop, high pressure hydrocarbon leak).\n"
-        "  * 'Medium': Moderate non-life-threatening energy (e.g. low pressure drip, low height slip/trip hazard, minor machinery defect).\n"
-        "  * 'Low': Low energy / routine maintenance / housekeeping / minor surface damage (e.g., scratched paint, pallet blocking secondary path, minor wear, damage on casing).\n"
-        "- classification:\n"
-        "  * If actual_injury is Fatal/Severe: 'SIF Incident / Serious Injury Occurred'\n"
-        "  * If actual_injury is None:\n"
-        "    - High/Critical SIF:\n"
-        "      * If Near Miss -> 'SIF Precursor / High-Potential Near Miss'\n"
-        "      * If Unsafe Act -> 'SIF Precursor / High-Risk Behavioral Deviation'\n"
-        "      * If Unsafe Condition -> 'SIF Precursor / High-Risk Facility Condition'\n"
-        "    - Medium SIF:\n"
-        "      * If Near Miss -> 'Moderate Near Miss / Non-SIF'\n"
-        "      * If Unsafe Act -> 'Moderate Procedural Deviation / Non-SIF'\n"
-        "      * If Unsafe Condition -> 'Moderate Facility Hazard / Non-SIF'\n"
-        "    - Low SIF -> 'Low-Potential Observation / Non-SIF'\n"
-        "- hazard_category: string\n"
-        "- energy_source: string\n"
-        "- barrier: string\n"
-        "- barrier_failure: string\n"
-        "- exposure: string\n"
-        "- consequence: string\n"
-        "- life_saving_rule: string\n"
-        "- risk_score: float (0.0 - 100.0)\n"
-        "- severity_score: float (0.0 - 10.0)\n"
-        "- exposure_score: float (0.0 - 10.0)\n"
-        "- barrier_score: float (0.0 - 10.0)\n"
-        "- ai_confidence: float (e.g. 94.5)\n"
-        "- ai_rationale: string explaining step-by-step reasoning\n"
-        "- matched_words: list of strings (extracted keywords from input text)"
+        "You are an elite Industrial Safety & SIF (Serious Injury or Fatality) AI intelligence engine adhering to Campbell Institute & OIL standards.\n"
+        "Analyze the given safety observation and return a strict JSON object with EXACT keys:\n"
+        "- is_sif_potential: Exactly 'YES' or 'NO' (YES if high-energy + compromised barrier or actual serious injury; NO if low energy / routine / non-SIF).\n"
+        "- sif_category: Exactly one of ['Category 1 – SIF Incident (Actual SIF)', 'Category 2 – SIF Precursor', 'Category 3 – Non-SIF'].\n"
+        "- sif_potential: Exactly one of ['Critical', 'High', 'Medium', 'Low'].\n"
+        "- activity: Extracted work activity (e.g., 'Hot Work', 'Working at Height', 'Lifting Operations', 'Confined Space Entry', 'Energy Isolation (LOTO)', 'Pressurized Systems & Flange Work', 'Mobile Equipment Operation', 'Excavation Work', 'Routine Maintenance & Operation').\n"
+        "- location: Extracted specific physical location/area (e.g., 'Fuel Storage Area', 'FCCU Unit 04', 'Tank Farm', 'Pipe Rack Corridor', 'Drill Rig Floor', 'Substation #2 Electrical Bay', 'Compressor House', 'Process Unit Area').\n"
+        "- energy_source: Physical energy source (e.g., 'Thermal Energy & Flammable Atmosphere', 'Gravitational Energy (> 1.8m Height)', 'Electrical Energy (> 480V / Arc Flash Potential)', 'Pressurized Hydrocarbon / Gas (> 50 PSI)', 'Suspended Mass / Dynamic Kinetic Energy', 'Chemical Toxicity / Corrosive Energy', 'Low Mechanical Energy').\n"
+        "- barrier: Prescribed engineered or administrative safeguard (e.g., 'Hot Work Permit & Fire Protection Barrier', '100% Tie-Off Full Body Harness & Anchor', 'LOTO Lockout/Tagout & Dielectric Insulation', 'Rigging Inspection & Drop Zone Exclusion', 'Continuous Gas Testing & Entry Attendant').\n"
+        "- barrier_failure: Specific barrier failure or defect (e.g., 'Fire Protection Missing / Inadequate Watch', 'Fall Protection / Lanyard Unhooked', 'Energy Isolation / LOTO Incomplete', 'Rigging Failure / Drop Zone Unbarricaded', 'Gas Testing Inadequate / Entry Permit Lapse', 'Walkway Obstruction').\n"
+        "- life_saving_rule: Applicable Life-Saving Rule (e.g., 'Hot Work / Work Authorization', 'Working at Height / 100% Tie-Off', 'Energy Isolation (LOTO)', 'Confined Space Entry', 'Safe Mechanical Lifting & Rigging', 'Line Breaking & Pressure Isolation', 'Line of Fire & Mobile Equipment Exclusion', 'Bypassing Safety Critical Controls').\n"
+        "- condition: Exactly one of ['Unsafe Act', 'Unsafe Condition', 'Near Miss'].\n"
+        "- event: Descriptive event name (e.g., 'Hot Work & Ignition Control', 'Working at Height / Fall Protection', 'Suspended Load & Dropped Objects', 'Pressurized Systems & Flange Management', etc.).\n"
+        "- actual_injury: Exactly one of ['Fatal injury', 'Severe / Lost Time Injury', 'First Aid / Minor Injury', 'None'].\n"
+        "- classification: Standard classification string.\n"
+        "- hazard_category: Hazard category string.\n"
+        "- priority: Exactly one of ['Critical', 'High', 'Medium', 'Low'].\n"
+        "- risk_score: Float between 0.0 and 100.0 (e.g., 87.0 for High SIF Precursor, 25.0 for Low Non-SIF).\n"
+        "- severity_score: Float 0.0 - 10.0.\n"
+        "- exposure_score: Float 0.0 - 10.0.\n"
+        "- barrier_score: Float 0.0 - 10.0.\n"
+        "- ai_confidence: Float (e.g., 94.5).\n"
+        "- ai_rationale: Step-by-step reasoning string.\n"
+        "- matched_words: List of 4-6 salient keyword strings."
     )
 
     payload = {
@@ -252,12 +329,22 @@ def analyze_sif_report(text: str) -> dict:
                 content = data["choices"][0]["message"]["content"]
                 parsed = json.loads(content)
                 if "risk_score" in parsed and "sif_potential" in parsed:
-                    # Normalize confidence if on 0-1 scale
                     if parsed.get("ai_confidence", 0) <= 1.0:
                         parsed["ai_confidence"] = round(parsed.get("ai_confidence", 0.94) * 100, 1)
+                    # Normalize is_sif_potential and sif_category if missing
+                    if "is_sif_potential" not in parsed:
+                        parsed["is_sif_potential"] = "YES" if parsed.get("sif_potential") in ["High", "Critical"] else "NO"
+                    parsed["is_sif_precursor"] = parsed["is_sif_potential"]
+                    if "sif_category" not in parsed:
+                        if parsed.get("actual_injury") in ["Fatal injury", "Severe / Lost Time Injury"]:
+                            parsed["sif_category"] = "Category 1 – SIF Incident (Actual SIF)"
+                        elif parsed["is_sif_potential"] == "YES":
+                            parsed["sif_category"] = "Category 2 – SIF Precursor"
+                        else:
+                            parsed["sif_category"] = "Category 3 – Non-SIF"
                     return parsed
     except Exception as e:
-        print("[SifService] Groq AI call notice / local fallback:", e)
+        print("[SifService] Groq AI call notice / fallback:", e)
 
     # 2. Deep rule-based SIF Category 3 engine
     return compute_rule_based_sif(text)
