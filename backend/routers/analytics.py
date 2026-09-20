@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from database import get_db
-from models import IncidentReport, User
+from models import IncidentReport, User, PrecursorPattern
 
 router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
 
@@ -70,45 +70,22 @@ def get_sif_intelligence(db: Session = Depends(get_db)):
             "density": avg_dens
         })
 
-    if not scatter_plot:
-        scatter_plot = [
-            {"activity": "Working at Height", "count": max(1, sif_count), "density": 87.2},
-            {"activity": "Pressurized Systems", "count": max(1, sif_count), "density": 78.4},
-            {"activity": "Energy Isolation", "count": max(1, sif_count), "density": 92.5}
-        ]
-
+    patterns = db.query(PrecursorPattern).all()
     top_precursors = [
         {
-            "id": "PAT-01",
-            "name": "High Energy Pressurized Line Exposure",
-            "occurrences": max(sif_count, 1),
-            "activities": "Operations / Pipeline",
-            "trend": "↑ 14%",
-            "risk_level": "HIGH",
-            "life_saving_rule": "Bypass of Safety Controls"
-        },
-        {
-            "id": "PAT-02",
-            "name": "Working at Height Anchorage Non-Compliance",
-            "occurrences": max(sif_count, 1),
-            "activities": "Rig Floor / Elevated Deck",
-            "trend": "Stable",
-            "risk_level": "HIGH",
-            "life_saving_rule": "Working at Height"
-        },
-        {
-            "id": "PAT-03",
-            "name": "Line-of-Fire Heavy Mechanical Proximity",
-            "occurrences": max(total, 1),
-            "activities": "Lifting / Rigging",
-            "trend": "↓ 8%",
-            "risk_level": "MEDIUM",
-            "life_saving_rule": "Line of Fire"
+            "id": f"PAT-{p.id:02d}",
+            "name": p.name,
+            "occurrences": p.occurrences,
+            "activities": p.activities or "Operations",
+            "trend": p.trend or "Stable",
+            "risk_level": p.risk_level or "MEDIUM",
+            "life_saving_rule": p.life_saving_rule or "General Safety"
         }
+        for p in patterns
     ]
 
     return {
-        "sif_reports_count": sif_count if sif_count > 0 else total,
+        "sif_reports_count": sif_count,
         "high_confidence_count": high_conf,
         "needs_review_count": needs_review,
         "emerging_patterns_count": len(scatter_plot),

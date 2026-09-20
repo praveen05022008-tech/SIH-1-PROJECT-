@@ -1,7 +1,6 @@
 /**
- * API configuration for SIF-SHIELD (Standalone Frontend Mode).
- * All /api/* calls are intercepted by the client-side mock service.
- * No backend server is required.
+ * API configuration for SIF-SHIELD.
+ * Proxies /api/* requests to FastAPI backend on http://127.0.0.1:8000.
  */
 export const API_BASE_URL = '';
 

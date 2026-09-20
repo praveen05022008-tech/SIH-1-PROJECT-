@@ -52,7 +52,10 @@ def serialize_report(r: IncidentReport) -> dict:
         "unit": r.unit,
         "people_involved": r.people_involved,
         "equipment_involved": r.equipment_involved,
-        "timestamp": r.timestamp or (r.created_at.isoformat() if r.created_at else None),
+        "timestamp": (
+            (r.timestamp + "Z" if r.timestamp and "T" in r.timestamp and not r.timestamp.endswith("Z") and not ("+" in r.timestamp[10:] or "-" in r.timestamp[10:]) else r.timestamp)
+            or (r.created_at.isoformat() + "Z" if r.created_at else None)
+        ),
         "status": r.status,
         "priority": r.priority,
         "sif_potential": r.sif_potential,
@@ -103,8 +106,10 @@ def create_safety_report(
     reporter_id = user.id if user else None
 
     report = IncidentReport(
+        id=code,
         report_code=code,
         raw_text=req.raw_text,
+        description=req.raw_text,
         audio_transcript=req.audio_transcript or req.raw_text,
         audio_url=req.audio_url,
         photo_url=req.photo_url,
@@ -137,7 +142,8 @@ def create_safety_report(
         exposure_score=req.exposure_score or ai_data.get("exposure_score", 5.0),
         barrier_score=req.barrier_score or ai_data.get("barrier_score", 5.0),
         ai_confidence=req.ai_confidence or ai_data.get("ai_confidence", 94.0),
-        ai_rationale=req.ai_rationale or ai_data.get("ai_rationale")
+        ai_rationale=req.ai_rationale or ai_data.get("ai_rationale"),
+        timestamp=req.timestamp or (datetime.utcnow().isoformat() + "Z")
     )
     db.add(report)
     db.commit()

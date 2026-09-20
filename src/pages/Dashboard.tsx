@@ -322,986 +322,955 @@ export const Dashboard: React.FC<DashboardProps> = ({
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">      {/* 1. HERO WELCOME BOX (Full Width) */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#005B54] via-[#008779] to-[#00A389] text-white p-7 shadow-lg shadow-[#008779]/15">
 
-      {/* 2-Column Main Layout: Left Main Area + Right Progress & Tasks Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Watermark Trophy / Shield Icon in Background */}
+        <div className="absolute right-6 -bottom-6 opacity-15 pointer-events-none">
+          <Award className="h-48 w-48 text-white stroke-1" />
+        </div>
 
-        {/* Left Column (2/3 width) - Contains Welcome Box -> 4 Boxes -> Date-wise Issue Table */}
-        <div className="lg:col-span-2 space-y-6">
-
-          {/* 1. HERO WELCOME BOX */}
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#005B54] via-[#008779] to-[#00A389] text-white p-7 shadow-lg shadow-[#008779]/15">
-
-            {/* Watermark Trophy / Shield Icon in Background */}
-            <div className="absolute right-6 -bottom-6 opacity-15 pointer-events-none">
-              <Award className="h-48 w-48 text-white stroke-1" />
-            </div>
-
-            <div className="relative z-10 max-w-xl">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-xs text-[11px] font-bold text-emerald-100 mb-2 border border-white/20">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
-                <span>
-                  {userRole === 'Admin'
-                    ? 'System Administrator & Governance Hub'
-                    : userRole === 'Safety Manager'
-                      ? 'HSE Executive Fleet Command Hub'
-                      : 'Safety Officer Active Console • IN FIELD'}
-                </span>
-              </div>
-
-              <h1 className="text-2xl font-black tracking-tight text-white">
-                {userRole === 'Admin'
-                  ? `Welcome Back, ${userName || 'System Administrator'}`
-                  : userRole === 'Safety Manager'
-                    ? `Welcome Back, ${userName || 'Safety Manager'}`
-                    : `Welcome Back, ${userName || 'Safety Officer'}!`}
-              </h1>
-              <p className="text-sm text-emerald-50/90 italic mt-1 font-medium leading-relaxed">
-                {userRole === 'Admin'
-                  ? 'Enterprise Portal Operations, System Health, and AI Precursor Governance'
-                  : userRole === 'Safety Manager'
-                    ? `Macro Safety Governance: ${events.length} Total Field Observations Logged • Real-time AI SIF Analysis`
-                    : 'Active Shift: Precursor Hazard Review Queue & Barrier Audit Operations.'}
-              </p>
-
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-                {userRole === 'Admin' ? (
-                  <>
-                    <button
-                      onClick={() => onNavigateTo?.('admin-console')}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-[#008779] text-xs font-extrabold rounded-full shadow-md hover:bg-emerald-50 transition-all duration-200 cursor-pointer"
-                    >
-                      <ShieldCheck className="h-3.5 w-3.5 text-[#008779]" />
-                      <span>Configure AI Thresholds & Security</span>
-                    </button>
-                    <button
-                      onClick={() => onNavigateTo?.('manager')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs"
-                    >
-                      <BarChart3 className="h-3.5 w-3.5 text-emerald-100" />
-                      <span>Open Manager Suite</span>
-                    </button>
-                  </>
-                ) : userRole === 'Safety Manager' ? (
-                  <>
-                    <button
-                      onClick={() => onNavigateTo?.('manager')}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF7A1A] hover:bg-[#E56A12] text-white text-xs font-extrabold rounded-full shadow-md transition-all duration-200 transform hover:translate-x-0.5 cursor-pointer"
-                    >
-                      <span>Open Command Center</span>
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
-
-                    <button
-                      onClick={() => onNavigateTo?.('sif')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs"
-                    >
-                      <ShieldAlert className="h-3.5 w-3.5 text-emerald-100" />
-                      <span>Strategic SIF Intelligence</span>
-                    </button>
-
-                    <button
-                      onClick={() => onNavigateTo?.('sites')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs"
-                    >
-                      <MapPin className="h-3.5 w-3.5 text-emerald-100" />
-                      <span>Sites Overview</span>
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => onNavigateTo?.('assigned-reports')}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-[#008779] hover:bg-emerald-50 text-xs font-extrabold rounded-full shadow-md transition-all duration-200 transform hover:translate-x-0.5 cursor-pointer"
-                    >
-                      <ClipboardCheck className="h-3.5 w-3.5 text-[#008779]" />
-                      <span>Assigned Reports</span>
-                    </button>
-
-                    <button
-                      onClick={() => onNavigateTo?.('investigate')}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF7A1A] hover:bg-[#E56A12] text-white text-xs font-extrabold rounded-full shadow-md transition-all duration-200 transform hover:translate-x-0.5 cursor-pointer"
-                    >
-                      <Search className="h-3.5 w-3.5" />
-                      <span>Investigate Issue</span>
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
-
-                    <button
-                      onClick={() => onNavigateTo?.('sif')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs"
-                    >
-                      <ShieldAlert className="h-3.5 w-3.5 text-emerald-100" />
-                      <span>SIF Risk</span>
-                    </button>
-
-                    <button
-                      onClick={() => onNavigateTo?.('ai-analysis')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs"
-                    >
-                      <BrainCircuit className="h-3.5 w-3.5 text-emerald-100" />
-                      <span>AI Analysis</span>
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
+        <div className="relative z-10 max-w-2xl">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-xs text-[11px] font-bold text-emerald-100 mb-2 border border-white/20">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
+            <span>
+              {userRole === 'Admin'
+                ? 'System Administrator & Governance Hub'
+                : userRole === 'Safety Manager'
+                  ? 'HSE Executive Fleet Command Hub'
+                  : 'Safety Officer Active Console • IN FIELD'}
+            </span>
           </div>
 
-          {/* 1B. ADMIN ENTERPRISE PORTALS GRID (VISIBLE ON DASHBOARD FOR ADMIN ROLE) */}
-          {userRole === 'Admin' && (
-            <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div>
-                  <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-                    <ShieldCheck className="h-4.5 w-4.5 text-[#008779]" />
-                    <span>RAKSHA Enterprise Portal Operations & Control</span>
-                  </h2>
-                  <p className="text-xs text-slate-400 font-medium mt-0.5">
-                    Launch operational portals, monitor live throughput, and oversee active user sessions.
-                  </p>
-                </div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            {userRole === 'Admin'
+              ? `Welcome Back, ${userName || 'System Administrator'}`
+              : userRole === 'Safety Manager'
+                ? `Welcome Back, ${userName || 'Safety Manager'}`
+                : `Welcome Back, ${userName || 'Safety Officer'}!`}
+          </h1>
+          <p className="text-sm text-emerald-50/90 italic mt-1 font-medium leading-relaxed">
+            {userRole === 'Admin'
+              ? 'Enterprise Portal Operations, System Health, and AI Precursor Governance'
+              : userRole === 'Safety Manager'
+                ? `Macro Safety Governance: ${events.length} Total Field Observations Logged • Real-time AI SIF Analysis`
+                : 'Active Shift: Precursor Hazard Review Queue & Barrier Audit Operations.'}
+          </p>
+
+          {/* Pill Action Buttons Row at the Bottom of Welcome Box */}
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            {userRole === 'Admin' ? (
+              <>
                 <button
                   onClick={() => onNavigateTo?.('admin-console')}
-                  className="px-3.5 py-1.5 rounded-xl bg-[#E8F6F4] text-[#008779] text-xs font-extrabold hover:bg-[#d4f0eb] transition border border-[#008779]/20 cursor-pointer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-[#008779] text-xs font-extrabold rounded-full shadow-md hover:bg-emerald-50 transition-all duration-200 cursor-pointer"
                 >
-                  Manage Portals →
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#008779]" />
+                  <span>Configure AI Thresholds & Security</span>
                 </button>
-              </div>
+                <button
+                  onClick={() => onNavigateTo?.('manager')}
+                  className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs border border-white/20"
+                >
+                  <BarChart3 className="h-3.5 w-3.5 text-emerald-100" />
+                  <span>Open Manager Suite</span>
+                </button>
+              </>
+            ) : userRole === 'Safety Manager' ? (
+              <>
+                <button
+                  onClick={() => onNavigateTo?.('manager')}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF7A1A] hover:bg-[#E56A12] text-white text-xs font-extrabold rounded-full shadow-md transition-all duration-200 transform hover:translate-x-0.5 cursor-pointer"
+                >
+                  <span>Open Command Center</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Persona 1: Field Worker Portal */}
-                <div className="border border-emerald-200 bg-emerald-50/40 rounded-2xl p-4.5 flex flex-col justify-between space-y-3 hover:shadow-sm transition">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-9 w-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
-                          <HardHat className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-800 block">Persona 1 — Field Ops</span>
-                          <h4 className="text-sm font-extrabold text-slate-900">Field Worker Portal</h4>
-                        </div>
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
-                        ● Online
-                      </span>
-                    </div>
+                <button
+                  onClick={() => onNavigateTo?.('sif')}
+                  className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs border border-white/20"
+                >
+                  <ShieldAlert className="h-3.5 w-3.5 text-emerald-100" />
+                  <span>Strategic SIF Intelligence</span>
+                </button>
 
-                    <div className="grid grid-cols-3 gap-2 text-center mt-3 pt-2.5 border-t border-emerald-200/60 text-xs">
-                      <div>
-                        <div className="font-extrabold text-slate-900">24</div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase">Active Users</div>
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-slate-900">8</div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase">Reports Today</div>
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-slate-900">2.3 min</div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase">Avg Submit</div>
-                      </div>
-                    </div>
-                  </div>
+                <button
+                  onClick={() => onNavigateTo?.('sites')}
+                  className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs border border-white/20"
+                >
+                  <MapPin className="h-3.5 w-3.5 text-emerald-100" />
+                  <span>Sites Overview</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => onNavigateTo?.('assigned-reports')}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-[#008779] hover:bg-emerald-50 text-xs font-extrabold rounded-full shadow-md transition-all duration-200 transform hover:translate-x-0.5 cursor-pointer"
+                >
+                  <ClipboardCheck className="h-3.5 w-3.5 text-[#008779]" />
+                  <span>Assigned Reports</span>
+                </button>
 
-                  <button
-                    onClick={() => onNavigateTo?.('worker-portal')}
-                    className="w-full py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <span>Open Field Portal</span>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+                <button
+                  onClick={() => onNavigateTo?.('investigate')}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF7A1A] hover:bg-[#E56A12] text-white text-xs font-extrabold rounded-full shadow-md transition-all duration-200 transform hover:translate-x-0.5 cursor-pointer"
+                >
+                  <Search className="h-3.5 w-3.5" />
+                  <span>Investigate Issue</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
 
-                {/* Persona 2: AI Engine & Precursor Analysis */}
-                <div className="border border-purple-200 bg-purple-50/40 rounded-2xl p-4.5 flex flex-col justify-between space-y-3 hover:shadow-sm transition">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-9 w-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
-                          <BrainCircuit className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-purple-800 block">Persona 2 — AI Engine</span>
-                          <h4 className="text-sm font-extrabold text-slate-900">AI Triage & Analysis</h4>
-                        </div>
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-100 text-purple-800 border border-purple-300">
-                        ● Online
-                      </span>
-                    </div>
+                <button
+                  onClick={() => onNavigateTo?.('sif')}
+                  className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs border border-white/20"
+                >
+                  <ShieldAlert className="h-3.5 w-3.5 text-emerald-100" />
+                  <span>SIF Risk</span>
+                </button>
 
-                    <div className="grid grid-cols-3 gap-2 text-center mt-3 pt-2.5 border-t border-purple-200/60 text-xs">
-                      <div>
-                        <div className="font-extrabold text-purple-900">GATI v1.3</div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase">Engine Model</div>
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-purple-900">94.8%</div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase">Accuracy</div>
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-purple-900">1.4 sec</div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase">Avg Latency</div>
-                      </div>
-                    </div>
-                  </div>
+                <button
+                  onClick={() => onNavigateTo?.('ai-analysis')}
+                  className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs border border-white/20"
+                >
+                  <BrainCircuit className="h-3.5 w-3.5 text-emerald-100" />
+                  <span>AI Analysis</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
 
-                  <button
-                    onClick={() => onNavigateTo?.('analysis')}
-                    className="w-full py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <span>Open AI Diagnostics</span>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                {/* Persona 3: Safety Officer Center */}
-                <div className="border border-blue-200 bg-blue-50/40 rounded-2xl p-4.5 flex flex-col justify-between space-y-3 hover:shadow-sm transition">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-9 w-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
-                          <ClipboardCheck className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-blue-800 block">Persona 3 — Safety Lead</span>
-                          <h4 className="text-sm font-extrabold text-slate-900">Safety Officer Center</h4>
-                        </div>
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-100 text-blue-800 border border-blue-300">
-                        ● Online
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 text-center mt-3 pt-2.5 border-t border-blue-200/60 text-xs">
-                      <div>
-                        <div className="font-extrabold text-blue-900">{metrics.incompleted}</div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase">Pending Review</div>
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-blue-900">6</div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase">Active SWA</div>
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-blue-900">4.2 hrs</div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase">Avg Turnaround</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => onNavigateTo?.('inbox')}
-                    className="w-full py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <span>Open Review Center</span>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                {/* Persona 4: Safety Manager Suite */}
-                <div className="border border-teal-200 bg-teal-50/40 rounded-2xl p-4.5 flex flex-col justify-between space-y-3 hover:shadow-sm transition">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-9 w-9 rounded-xl bg-teal-100 text-[#008779] flex items-center justify-center font-bold">
-                          <BarChart3 className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-[#008779] block">Persona 4 — HSE Manager</span>
-                          <h4 className="text-sm font-extrabold text-slate-900">HSE Manager Command</h4>
-                        </div>
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-teal-100 text-[#008779] border border-teal-300">
-                        ● Online
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 text-center mt-3 pt-2.5 border-t border-teal-200/60 text-xs">
-                      <div>
-                        <div className="font-extrabold text-[#008779]">5</div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase">Monitored Sites</div>
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-[#008779]">10</div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase">LSR Active</div>
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-[#008779]">94.2%</div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase">SIF Prevention</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => onNavigateTo?.('manager')}
-                    className="w-full py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <span>Open Manager Suite</span>
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
+      {/* 1B. ADMIN ENTERPRISE PORTALS GRID (VISIBLE ON DASHBOARD FOR ADMIN ROLE) */}
+      {userRole === 'Admin' && (
+        <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                <ShieldCheck className="h-4.5 w-4.5 text-[#008779]" />
+                <span>RAKSHA Enterprise Portal Operations & Control</span>
+              </h2>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">
+                Launch operational portals, monitor live throughput, and oversee active user sessions.
+              </p>
             </div>
-          )}
-
-          {/* 1C. ACTIVE SAFETY DIRECTIVES RIBBON (COMPANY-WIDE / TARGETED) */}
-          {directives.length > 0 && (
-            <div className="space-y-3">
-              {directives.slice(0, 2).map((dir, idx) => {
-                const isAcknowledged = acknowledgedDirIds.has(dir.directive_id) || dir.acknowledge_count > 0;
-                const isUrgent = dir.priority === 'URGENT';
-                const targetScope = dir.target_scope || 'ALL';
-                const targetName = dir.target_name || dir.target_sites;
-
-                return (
-                  <div
-                    key={dir.directive_id || dir.id || `dir-ribbon-${idx}`}
-                    className={`border rounded-2xl p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-3 transition ${isUrgent
-                        ? 'bg-red-50 border-red-200 ring-1 ring-red-500/20'
-                        : 'bg-amber-50/80 border-amber-200'
-                      }`}
-                  >
-                    <div className="space-y-1.5 max-w-3xl">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="flex items-center gap-1 text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-600 text-white shadow-2xs">
-                          <Radio className="h-3 w-3 animate-pulse" />
-                          <span>{dir.priority} Directive</span>
-                        </span>
-                        <span className="font-mono text-xs font-black text-slate-800 bg-white/90 px-2 py-0.5 rounded border border-slate-300">
-                          {dir.directive_id}
-                        </span>
-                        <span className="text-[10.5px] font-bold text-slate-700 flex items-center gap-1">
-                          Target: <b className="text-slate-900 inline-flex items-center gap-1">{targetScope === 'ALL' ? (<><Globe className="h-3 w-3 text-slate-600 inline" /> All Operational Teams</>) : (<><Users className="h-3 w-3 text-slate-600 inline" /> {targetName}</>)}</b>
-                        </span>
-                      </div>
-
-                      <h4 className="font-extrabold text-slate-900 text-xs">{dir.title}</h4>
-                      <p className="text-[11.5px] text-slate-700 leading-snug font-medium line-clamp-2">
-                        {dir.message}
-                      </p>
-                    </div>
-
-                    <div className="shrink-0 flex items-center gap-2 w-full md:w-auto justify-end">
-                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-2.5 py-1 rounded-lg border border-emerald-250">
-                        {dir.acknowledge_count} Acknowledged
-                      </span>
-                      {isAcknowledged ? (
-                        <span className="px-3 py-1.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold flex items-center gap-1">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                          <span>Signed</span>
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => handleAcknowledgeDirective(dir)}
-                          className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1 cursor-pointer"
-                        >
-                          <Check className="h-3.5 w-3.5" />
-                          <span>Sign Acknowledgment</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* 2. FOUR STAT BOXES DIRECTLY UNDER THE WELCOME BOX */}
-          {/* Total Issues | Completed Issues | Incompleted Issues | Overdue Issues */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-
-            {/* Box 1: Total Issues */}
-            <div
-              onClick={() => setFilterStatus('ALL')}
-              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${filterStatus === 'ALL' ? 'border-[#008779] ring-2 ring-[#008779]/20' : 'border-[#E6ECEB] hover:border-[#008779]/40'
-                }`}
+            <button
+              onClick={() => onNavigateTo?.('admin-console')}
+              className="px-3.5 py-1.5 rounded-xl bg-[#E8F6F4] text-[#008779] text-xs font-extrabold hover:bg-[#d4f0eb] transition border border-[#008779]/20 cursor-pointer"
             >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
-                  Total Issue
-                </span>
-                <div className="h-8 w-8 rounded-xl bg-[#E8F6F4] text-[#008779] flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <FileText className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="mt-2">
-                <div className="text-2xl font-black text-slate-900 font-mono-numbers">
-                  {metrics.total}
-                </div>
-                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium mt-0.5">
-                  <span>Total logged issues</span>
-                </div>
-              </div>
-              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-[#008779]">
-                <span>All Sites</span>
-                <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition" />
-              </div>
-            </div>
-
-            {/* Box 2: Completed Issues */}
-            <div
-              onClick={() => setFilterStatus('COMPLETED')}
-              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${filterStatus === 'COMPLETED' ? 'border-emerald-600 ring-2 ring-emerald-500/20' : 'border-[#E6ECEB] hover:border-emerald-500/40'
-                }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
-                  Completed
-                </span>
-                <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <CheckCircle2 className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="mt-2">
-                <div className="text-2xl font-black text-emerald-600 font-mono-numbers">
-                  {metrics.completed}
-                </div>
-                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium mt-0.5">
-                  <span className="text-emerald-600 font-bold">{metrics.completedRate}%</span>
-                  <span>resolved</span>
-                </div>
-              </div>
-              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-emerald-600">
-                <span>Verified</span>
-                <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition" />
-              </div>
-            </div>
-
-            {/* Box 3: Incompleted Issues */}
-            <div
-              onClick={() => setFilterStatus('INCOMPLETED')}
-              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${filterStatus === 'INCOMPLETED' ? 'border-[#FF7A1A] ring-2 ring-[#FF7A1A]/20' : 'border-[#E6ECEB] hover:border-[#FF7A1A]/40'
-                }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
-                  Incompleted
-                </span>
-                <div className="h-8 w-8 rounded-xl bg-amber-50 text-[#FF7A1A] flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Clock className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="mt-2">
-                <div className="text-2xl font-black text-[#FF7A1A] font-mono-numbers">
-                  {metrics.incompleted}
-                </div>
-                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium mt-0.5">
-                  <span className="text-[#FF7A1A] font-bold">{metrics.incompletedRate}%</span>
-                  <span>pending/active</span>
-                </div>
-              </div>
-              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-[#FF7A1A]">
-                <span>Requires Action</span>
-                <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition" />
-              </div>
-            </div>
-
-            {/* Box 4: Overdue Issues */}
-            <div
-              onClick={() => setFilterStatus('OVERDUE')}
-              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${filterStatus === 'OVERDUE' ? 'border-rose-600 ring-2 ring-rose-500/20' : 'border-[#E6ECEB] hover:border-rose-500/40'
-                }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
-                  Overdue
-                </span>
-                <div className="h-8 w-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <AlertOctagon className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="mt-2">
-                <div className="text-2xl font-black text-rose-600 font-mono-numbers">
-                  {metrics.overdue}
-                </div>
-                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium mt-0.5">
-                  <span className="text-rose-600 font-bold">Past SLA</span>
-                  <span>resolution date</span>
-                </div>
-              </div>
-              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-rose-600">
-                <span>Critical Attention</span>
-                <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition" />
-              </div>
-            </div>
-
+              Manage Portals →
+            </button>
           </div>
 
-          {/* 3. DATE-WISE ISSUE REGISTER / TABLE WITH ACTION COLUMN & VIEW POPUP */}
-          <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-5">
-
-            {/* Header & Controls */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Persona 1: Field Worker Portal */}
+            <div className="border border-emerald-200 bg-emerald-50/40 rounded-2xl p-4.5 flex flex-col justify-between space-y-3 hover:shadow-sm transition">
               <div>
-                <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-lg bg-[#E8F6F4] text-[#008779] flex items-center justify-center">
-                    <CalendarDays className="h-4 w-4" />
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                      <HardHat className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-800 block">Persona 1 — Field Ops</span>
+                      <h4 className="text-sm font-extrabold text-slate-900">Field Worker Portal</h4>
+                    </div>
                   </div>
-                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
-                    Date-wise Safety Issues Register
-                  </h3>
-                </div>
-                <p className="text-xs text-slate-400 font-medium mt-0.5 pl-9">
-                  Chronological records of safety observations, unsafe conditions, and precursor alerts
-                </p>
-              </div>
-
-              {/* View Mode Toggle & Status Filter Badges */}
-              <div className="flex flex-wrap items-center gap-1.5 pl-9 sm:pl-0">
-                <div className="flex items-center bg-slate-100 p-0.5 rounded-lg mr-1 border border-slate-200">
-                  <button
-                    onClick={() => setViewMode('table')}
-                    className={`p-1.5 rounded-md text-xs font-bold transition cursor-pointer ${viewMode === 'table' ? 'bg-white text-[#008779] shadow-2xs' : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    title="Table View"
-                  >
-                    <TableIcon className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={() => setViewMode('cards')}
-                    className={`p-1.5 rounded-md text-xs font-bold transition cursor-pointer ${viewMode === 'cards' ? 'bg-white text-[#008779] shadow-2xs' : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    title="Card View"
-                  >
-                    <LayoutGrid className="h-3.5 w-3.5" />
-                  </button>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    ● Online
+                  </span>
                 </div>
 
-                <button
-                  onClick={() => setFilterStatus('ALL')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${filterStatus === 'ALL'
-                      ? 'bg-[#008779] text-white shadow-2xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                >
-                  All ({metrics.total})
-                </button>
-                <button
-                  onClick={() => setFilterStatus('INCOMPLETED')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${filterStatus === 'INCOMPLETED'
-                      ? 'bg-[#FF7A1A] text-white shadow-2xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                >
-                  Incompleted ({metrics.incompleted})
-                </button>
-                <button
-                  onClick={() => setFilterStatus('COMPLETED')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${filterStatus === 'COMPLETED'
-                      ? 'bg-emerald-600 text-white shadow-2xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                >
-                  Completed ({metrics.completed})
-                </button>
-                <button
-                  onClick={() => setFilterStatus('OVERDUE')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${filterStatus === 'OVERDUE'
-                      ? 'bg-rose-600 text-white shadow-2xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                >
-                  Overdue ({metrics.overdue})
-                </button>
-              </div>
-            </div>
-
-            {/* Search & Site Filter Bar */}
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <div className="relative flex-1 w-full">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search by hazard, ID (#SIF...), site, rule, description..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9.5 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#008779] focus:bg-white transition"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                {uniqueSites.length > 0 && (
-                  <select
-                    value={selectedSiteFilter}
-                    onChange={(e) => setSelectedSiteFilter(e.target.value)}
-                    className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-hidden focus:border-[#008779] cursor-pointer"
-                  >
-                    <option value="ALL">All Sites ({uniqueSites.length})</option>
-                    {uniqueSites.map((s, idx) => (
-                      <option key={`${s}-${idx}`} value={s}>{s}</option>
-                    ))}
-                  </select>
-                )}
-
-                <button
-                  onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition cursor-pointer shrink-0"
-                  title="Toggle Sort Order"
-                >
-                  <Clock className="h-3.5 w-3.5 text-slate-500" />
-                  <span>{sortOrder === 'desc' ? 'Newest Date' : 'Oldest Date'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* TABLE VIEW (Default: Full Table with 'Action' Column and 'View' Button) */}
-            {viewMode === 'table' ? (
-              <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-2xs">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">
-                      <th className="py-3 px-4">Date & Time</th>
-                      <th className="py-3 px-3">Issue ID</th>
-                      <th className="py-3 px-4 min-w-[200px]">Hazard & Description</th>
-                      <th className="py-3 px-3">Site / Unit</th>
-                      <th className="py-3 px-3">Life-Saving Rule</th>
-                      <th className="py-3 px-3">SIF Risk</th>
-                      <th className="py-3 px-3">Status</th>
-                      <th className="py-3 px-4 text-center font-black text-[#008779]">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs">
-                    {filteredEvents.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="py-10 text-center text-slate-400 font-medium">
-                          No matching safety issues found.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredEvents.map((evt, idx) => {
-                        const dateInfo = formatDate(evt.timestamp);
-                        return (
-                          <tr
-                            key={evt.report_code || evt.id || `table-evt-${idx}`}
-                            className="hover:bg-[#E8F6F4]/30 transition-colors duration-150 group"
-                          >
-                            {/* 1. Date & Time */}
-                            <td className="py-3 px-4 whitespace-nowrap">
-                              <div className="flex items-center gap-2">
-                                <div className="h-7 w-7 rounded-lg bg-[#E8F6F4] text-[#008779] flex items-center justify-center shrink-0">
-                                  <Calendar className="h-3.5 w-3.5" />
-                                </div>
-                                <div>
-                                  <div className="font-extrabold text-slate-800 text-[11px]">
-                                    {dateInfo.formattedDate}
-                                  </div>
-                                  <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
-                                    <span>{dateInfo.formattedTime}</span>
-                                    <span className="text-[#008779] font-bold">({dateInfo.relative})</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* 2. Issue ID / Code */}
-                            <td className="py-3 px-3 whitespace-nowrap">
-                              <span className="font-mono font-black text-[11px] text-[#008779] bg-[#E8F6F4] px-2 py-1 rounded-md border border-teal-100">
-                                {evt.report_code || evt.id}
-                              </span>
-                            </td>
-
-                            {/* 3. Hazard & Description */}
-                            <td className="py-3 px-4 max-w-xs">
-                              <div className="font-bold text-slate-900 group-hover:text-[#008779] transition leading-snug line-clamp-1">
-                                {evt.hazard || evt.activity}
-                              </div>
-                              <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
-                                {evt.description}
-                              </p>
-                            </td>
-
-                            {/* 4. Site / Unit */}
-                            <td className="py-3 px-3 whitespace-nowrap">
-                              <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-700">
-                                <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
-                                <span>{evt.site}</span>
-                              </div>
-                              {evt.unit && (
-                                <div className="text-[10px] text-slate-400 pl-4 truncate max-w-[120px]">
-                                  {evt.unit}
-                                </div>
-                              )}
-                            </td>
-
-                            {/* 5. Life-Saving Rule */}
-                            <td className="py-3 px-3 whitespace-nowrap">
-                              {evt.life_saving_rule ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#008779] bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">
-                                  <Tag className="h-3 w-3" />
-                                  {evt.life_saving_rule}
-                                </span>
-                              ) : (
-                                <span className="text-slate-400 text-[10px]">—</span>
-                              )}
-                            </td>
-
-                            {/* 6. SIF Risk */}
-                            <td className="py-3 px-3 whitespace-nowrap">
-                              {getRiskBadge(evt.risk_level, evt.sif_risk_score)}
-                            </td>
-
-                            {/* 7. Status */}
-                            <td className="py-3 px-3 whitespace-nowrap">
-                              {getStatusBadge(evt)}
-                            </td>
-
-                            {/* 8. Action Column with View Button */}
-                            <td className="py-3 px-4 text-center whitespace-nowrap">
-                              <button
-                                onClick={() => setPopupEvent(evt)}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer"
-                                title="View detailed issue popup"
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                                <span>View</span>
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              /* CARD VIEW (Alternative Grid) */
-              <div className="space-y-3">
-                {filteredEvents.length === 0 ? (
-                  <div className="py-12 px-4 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                    <FileText className="h-10 w-10 text-slate-300 mx-auto mb-2" />
-                    <h4 className="text-sm font-bold text-slate-700">No matching safety issues found</h4>
-                    <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-                      Try adjusting your status filter or search query.
-                    </p>
+                <div className="grid grid-cols-3 gap-2 text-center mt-3 pt-2.5 border-t border-emerald-200/60 text-xs">
+                  <div>
+                    <div className="font-extrabold text-slate-900">24</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">Active Users</div>
                   </div>
-                ) : (
-                  filteredEvents.map((evt, idx) => {
-                    const dateInfo = formatDate(evt.timestamp);
-                    return (
-                      <div
-                        key={evt.report_code || evt.id || `card-evt-${idx}`}
-                        className="p-4 bg-white border border-[#E6ECEB] hover:border-[#008779]/40 rounded-2xl transition-all duration-200 shadow-2xs hover:shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 group"
-                      >
-                        <div className="flex items-start gap-3.5 min-w-0">
-                          <div className="shrink-0 flex flex-col items-center justify-center p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-center min-w-[76px] group-hover:bg-[#E8F6F4] group-hover:border-[#008779]/30 transition">
-                            <Calendar className="h-3.5 w-3.5 text-[#008779] mb-1" />
-                            <span className="text-[11px] font-black text-slate-800 leading-tight">
-                              {dateInfo.formattedDate.split(' ').slice(0, 2).join(' ')}
-                            </span>
-                            <span className="text-[9px] font-bold text-slate-400">
-                              {dateInfo.formattedDate.split(' ')[2] || ''}
-                            </span>
-                            <span className="text-[8px] font-extrabold text-[#008779] bg-white px-1.5 py-0.5 rounded-sm mt-1 border border-slate-100 shadow-2xs">
-                              {dateInfo.relative}
-                            </span>
-                          </div>
-
-                          <div className="space-y-1.5 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-[11px] font-mono font-black text-[#008779] bg-[#E8F6F4] px-2 py-0.5 rounded-md">
-                                {evt.report_code || evt.id}
-                              </span>
-                              {getRiskBadge(evt.risk_level, evt.sif_risk_score)}
-                              {getStatusBadge(evt)}
-                              <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {dateInfo.formattedTime}
-                              </span>
-                            </div>
-
-                            <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 group-hover:text-[#008779] transition leading-snug line-clamp-1">
-                              {evt.hazard || evt.activity}
-                            </h4>
-
-                            <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed font-normal">
-                              {evt.description}
-                            </p>
-
-                            <div className="flex flex-wrap items-center gap-2 pt-1">
-                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                                <MapPin className="h-3 w-3 text-slate-400" />
-                                {evt.site} {evt.unit ? `• ${evt.unit}` : ''}
-                              </span>
-
-                              {evt.life_saving_rule && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#008779] bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">
-                                  <Tag className="h-3 w-3" />
-                                  {evt.life_saving_rule}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Action View Button */}
-                        <div className="flex items-center gap-2 shrink-0 self-end md:self-center pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 w-full md:w-auto justify-between md:justify-end">
-                          <button
-                            onClick={() => setPopupEvent(evt)}
-                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition-all duration-150 cursor-pointer shadow-2xs hover:shadow-xs"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            <span>View Issue</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
+                  <div>
+                    <div className="font-extrabold text-slate-900">8</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">Reports Today</div>
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-slate-900">2.3 min</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">Avg Submit</div>
+                  </div>
+                </div>
               </div>
-            )}
 
-            {/* Bottom Summary Bar */}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs font-semibold text-slate-500">
-              <span>Showing {filteredEvents.length} of {events.length} total recorded issues</span>
               <button
-                onClick={() => onNavigateTo?.('inbox')}
-                className="text-[#008779] hover:text-[#007064] font-extrabold flex items-center gap-1 hover:underline cursor-pointer"
+                onClick={() => onNavigateTo?.('worker-portal')}
+                className="w-full py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <span>Open Full Safety Inbox</span>
+                <span>Open Field Portal</span>
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
 
-          </div>
+            {/* Persona 2: AI Engine & Precursor Analysis */}
+            <div className="border border-purple-200 bg-purple-50/40 rounded-2xl p-4.5 flex flex-col justify-between space-y-3 hover:shadow-sm transition">
+              <div>
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                      <BrainCircuit className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-purple-800 block">Persona 2 — AI Engine</span>
+                      <h4 className="text-sm font-extrabold text-slate-900">AI Triage & Analysis</h4>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-100 text-purple-800 border border-purple-300">
+                    ● Online
+                  </span>
+                </div>
 
+                <div className="grid grid-cols-3 gap-2 text-center mt-3 pt-2.5 border-t border-purple-200/60 text-xs">
+                  <div>
+                    <div className="font-extrabold text-purple-900">GATI v1.3</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">Engine Model</div>
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-purple-900">94.8%</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">Accuracy</div>
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-purple-900">1.4 sec</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">Avg Latency</div>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => onNavigateTo?.('analysis')}
+                className="w-full py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <span>Open AI Diagnostics</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Persona 3: Safety Officer Center */}
+            <div className="border border-blue-200 bg-blue-50/40 rounded-2xl p-4.5 flex flex-col justify-between space-y-3 hover:shadow-sm transition">
+              <div>
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                      <ClipboardCheck className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-blue-800 block">Persona 3 — Safety Lead</span>
+                      <h4 className="text-sm font-extrabold text-slate-900">Safety Officer Center</h4>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-100 text-blue-800 border border-blue-300">
+                    ● Online
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center mt-3 pt-2.5 border-t border-blue-200/60 text-xs">
+                  <div>
+                    <div className="font-extrabold text-blue-900">{metrics.incompleted}</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">Pending Review</div>
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-blue-900">6</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">Active SWA</div>
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-blue-900">4.2 hrs</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">Avg Turnaround</div>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => onNavigateTo?.('inbox')}
+                className="w-full py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <span>Open Review Center</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Persona 4: Safety Manager Suite */}
+            <div className="border border-teal-200 bg-teal-50/40 rounded-2xl p-4.5 flex flex-col justify-between space-y-3 hover:shadow-sm transition">
+              <div>
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 rounded-xl bg-teal-100 text-[#008779] flex items-center justify-center font-bold">
+                      <BarChart3 className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-[#008779] block">Persona 4 — HSE Manager</span>
+                      <h4 className="text-sm font-extrabold text-slate-900">HSE Manager Command</h4>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-teal-100 text-[#008779] border border-teal-300">
+                    ● Online
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center mt-3 pt-2.5 border-t border-teal-200/60 text-xs">
+                  <div>
+                    <div className="font-extrabold text-[#008779]">5</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">Monitored Sites</div>
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-[#008779]">10</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">LSR Active</div>
+                  </div>
+                  <div>
+                    <div className="font-extrabold text-[#008779]">94.2%</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">SIF Prevention</div>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => onNavigateTo?.('manager')}
+                className="w-full py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <span>Open Manager Suite</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. FOUR STAT BOXES DIRECTLY UNDER THE WELCOME BOX */}
+      {/* Total Issues | Completed Issues | Incompleted Issues | Overdue Issues */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+
+        {/* Box 1: Total Issues */}
+        <div
+          onClick={() => setFilterStatus('ALL')}
+          className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${filterStatus === 'ALL' ? 'border-[#008779] ring-2 ring-[#008779]/20' : 'border-[#E6ECEB] hover:border-[#008779]/40'
+            }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
+              Total Issue
+            </span>
+            <div className="h-8 w-8 rounded-xl bg-[#E8F6F4] text-[#008779] flex items-center justify-center group-hover:scale-110 transition-transform">
+              <FileText className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="text-2xl font-black text-slate-900 font-mono-numbers">
+              {metrics.total}
+            </div>
+            <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium mt-0.5">
+              <span>Total logged issues</span>
+            </div>
+          </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-[#008779]">
+            <span>All Sites</span>
+            <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition" />
+          </div>
         </div>
 
-        {/* Right Column (1/3 width) - Safety Progress & Precursor Tasks Panel */}
-        <div className="space-y-6">
+        {/* Box 2: Completed Issues */}
+        <div
+          onClick={() => setFilterStatus('COMPLETED')}
+          className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${filterStatus === 'COMPLETED' ? 'border-emerald-600 ring-2 ring-emerald-500/20' : 'border-[#E6ECEB] hover:border-emerald-500/40'
+            }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
+              Completed
+            </span>
+            <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="text-2xl font-black text-emerald-600 font-mono-numbers">
+              {metrics.completed}
+            </div>
+            <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium mt-0.5">
+              <span className="text-emerald-600 font-bold">{metrics.completedRate}%</span>
+              <span>resolved</span>
+            </div>
+          </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-emerald-600">
+            <span>Verified</span>
+            <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition" />
+          </div>
+        </div>
 
-          {/* Card 1: Safety & Telemetry Progress Circular Donut */}
-          <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-5">
-            <div className="flex items-center justify-between">
+        {/* Box 3: Incompleted Issues */}
+        <div
+          onClick={() => setFilterStatus('INCOMPLETED')}
+          className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${filterStatus === 'INCOMPLETED' ? 'border-[#FF7A1A] ring-2 ring-[#FF7A1A]/20' : 'border-[#E6ECEB] hover:border-[#FF7A1A]/40'
+            }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
+              Incompleted
+            </span>
+            <div className="h-8 w-8 rounded-xl bg-amber-50 text-[#FF7A1A] flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Clock className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="text-2xl font-black text-[#FF7A1A] font-mono-numbers">
+              {metrics.incompleted}
+            </div>
+            <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium mt-0.5">
+              <span className="text-[#FF7A1A] font-bold">{metrics.incompletedRate}%</span>
+              <span>pending/active</span>
+            </div>
+          </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-[#FF7A1A]">
+            <span>Requires Action</span>
+            <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition" />
+          </div>
+        </div>
+
+        {/* Box 4: Overdue Issues */}
+        <div
+          onClick={() => setFilterStatus('OVERDUE')}
+          className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${filterStatus === 'OVERDUE' ? 'border-rose-600 ring-2 ring-rose-500/20' : 'border-[#E6ECEB] hover:border-rose-500/40'
+            }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
+              Overdue
+            </span>
+            <div className="h-8 w-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <AlertTriangle className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <div className="text-2xl font-black text-rose-600 font-mono-numbers">
+              {metrics.overdue}
+            </div>
+            <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium mt-0.5">
+              <span className="text-rose-600 font-bold">Past SLA</span>
+              <span>resolution date</span>
+            </div>
+          </div>
+          <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-rose-600">
+            <span>Critical Attention</span>
+            <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition" />
+          </div>
+        </div>
+
+      </div>
+
+      {/* 3. DATE-WISE SAFETY ISSUES REGISTER (FULL WIDTH) */}
+      <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-5">
+
+        {/* Section Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-xl bg-[#E8F6F4] text-[#008779] flex items-center justify-center">
+                <Calendar className="h-4 w-4" />
+              </div>
+              <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
+                Date-wise Safety Issues Register
+              </h2>
+            </div>
+            <p className="text-xs text-slate-400 font-medium mt-1">
+              Chronological ledger of field safety observations, SIF alerts, and barrier audits.
+            </p>
+          </div>
+
+          {/* Controls: View Switcher & Status Badges Filter */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* View Mode Toggle */}
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+              <button
+                onClick={() => setViewMode('table')}
+                className={`p-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${viewMode === 'table' ? 'bg-white text-[#008779] shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                title="Table View"
+              >
+                <TableIcon className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`p-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${viewMode === 'cards' ? 'bg-white text-[#008779] shadow-2xs' : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                title="Card View"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Status Quick Filter Buttons */}
+            <button
+              onClick={() => setFilterStatus('ALL')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${filterStatus === 'ALL'
+                  ? 'bg-[#008779] text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+            >
+              All ({metrics.total})
+            </button>
+            <button
+              onClick={() => setFilterStatus('INCOMPLETED')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${filterStatus === 'INCOMPLETED'
+                  ? 'bg-[#FF7A1A] text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+            >
+              Incompleted ({metrics.incompleted})
+            </button>
+            <button
+              onClick={() => setFilterStatus('COMPLETED')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${filterStatus === 'COMPLETED'
+                  ? 'bg-emerald-600 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+            >
+              Completed ({metrics.completed})
+            </button>
+            <button
+              onClick={() => setFilterStatus('OVERDUE')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${filterStatus === 'OVERDUE'
+                  ? 'bg-rose-600 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+            >
+              Overdue ({metrics.overdue})
+            </button>
+          </div>
+        </div>
+
+        {/* Search & Site Filter Bar */}
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by hazard, ID (#SIF...), site, rule, description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9.5 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#008779] focus:bg-white transition"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {uniqueSites.length > 0 && (
+              <select
+                value={selectedSiteFilter}
+                onChange={(e) => setSelectedSiteFilter(e.target.value)}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-hidden focus:border-[#008779] cursor-pointer"
+              >
+                <option value="ALL">All Sites ({uniqueSites.length})</option>
+                {uniqueSites.map((s, idx) => (
+                  <option key={`${s}-${idx}`} value={s}>{s}</option>
+                ))}
+              </select>
+            )}
+
+            <button
+              onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+              className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition cursor-pointer shrink-0"
+              title="Toggle Sort Order"
+            >
+              <Clock className="h-3.5 w-3.5 text-slate-500" />
+              <span>{sortOrder === 'desc' ? 'Newest Date' : 'Oldest Date'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* TABLE VIEW (Default: Full Table with 'Action' Column and 'View' Button) */}
+        {viewMode === 'table' ? (
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-2xs">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">
+                  <th className="py-3 px-4">Date & Time</th>
+                  <th className="py-3 px-3">Issue ID</th>
+                  <th className="py-3 px-4 min-w-[200px]">Hazard & Description</th>
+                  <th className="py-3 px-3">Site / Unit</th>
+                  <th className="py-3 px-3">Life-Saving Rule</th>
+                  <th className="py-3 px-3">SIF Risk</th>
+                  <th className="py-3 px-3">Status</th>
+                  <th className="py-3 px-4 text-center font-black text-[#008779]">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {filteredEvents.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-10 text-center text-slate-400 font-medium">
+                      No matching safety issues found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredEvents.map((evt, idx) => {
+                    const dateInfo = formatDate(evt.timestamp);
+                    return (
+                      <tr
+                        key={evt.report_code || evt.id || `table-evt-${idx}`}
+                        className="hover:bg-[#E8F6F4]/30 transition-colors duration-150 group"
+                      >
+                        {/* 1. Date & Time */}
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-lg bg-[#E8F6F4] text-[#008779] flex items-center justify-center shrink-0">
+                              <Calendar className="h-3.5 w-3.5" />
+                            </div>
+                            <div>
+                              <div className="font-extrabold text-slate-800 text-[11px]">
+                                {dateInfo.formattedDate}
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                                <span>{dateInfo.formattedTime}</span>
+                                <span className="text-[#008779] font-bold">({dateInfo.relative})</span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 2. Issue ID / Code */}
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <span className="font-mono font-black text-[11px] text-[#008779] bg-[#E8F6F4] px-2 py-1 rounded-md border border-teal-100">
+                            {evt.report_code || evt.id}
+                          </span>
+                        </td>
+
+                        {/* 3. Hazard & Description */}
+                        <td className="py-3 px-4 max-w-xs">
+                          <div className="font-bold text-slate-900 group-hover:text-[#008779] transition leading-snug line-clamp-1">
+                            {evt.hazard || evt.activity}
+                          </div>
+                          <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                            {evt.description}
+                          </p>
+                        </td>
+
+                        {/* 4. Site / Unit */}
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-700">
+                            <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                            <span>{evt.site}</span>
+                          </div>
+                          {evt.unit && (
+                            <div className="text-[10px] text-slate-400 pl-4 truncate max-w-[120px]">
+                              {evt.unit}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* 5. Life-Saving Rule */}
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          {evt.life_saving_rule ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#008779] bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">
+                              <Tag className="h-3 w-3" />
+                              {evt.life_saving_rule}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-[10px]">—</span>
+                          )}
+                        </td>
+
+                        {/* 6. SIF Risk */}
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          {getRiskBadge(evt.risk_level, evt.sif_risk_score)}
+                        </td>
+
+                        {/* 7. Status */}
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          {getStatusBadge(evt)}
+                        </td>
+
+                        {/* 8. Action Column with View Button */}
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          <button
+                            onClick={() => setPopupEvent(evt)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer"
+                            title="View detailed issue popup"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>View</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          /* CARD VIEW (Alternative Grid) */
+          <div className="space-y-3">
+            {filteredEvents.length === 0 ? (
+              <div className="py-12 px-4 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                <FileText className="h-10 w-10 text-slate-300 mx-auto mb-2" />
+                <h4 className="text-sm font-bold text-slate-700">No matching safety issues found</h4>
+                <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                  Try adjusting your status filter or search query.
+                </p>
+              </div>
+            ) : (
+              filteredEvents.map((evt, idx) => {
+                const dateInfo = formatDate(evt.timestamp);
+                return (
+                  <div
+                    key={evt.report_code || evt.id || `card-evt-${idx}`}
+                    className="p-4 bg-white border border-[#E6ECEB] hover:border-[#008779]/40 rounded-2xl transition-all duration-200 shadow-2xs hover:shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 group"
+                  >
+                    <div className="flex items-start gap-3.5 min-w-0">
+                      <div className="shrink-0 flex flex-col items-center justify-center p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-center min-w-[76px] group-hover:bg-[#E8F6F4] group-hover:border-[#008779]/30 transition">
+                        <Calendar className="h-3.5 w-3.5 text-[#008779] mb-1" />
+                        <span className="text-[11px] font-black text-slate-800 leading-tight">
+                          {dateInfo.formattedDate.split(' ').slice(0, 2).join(' ')}
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400">
+                          {dateInfo.formattedDate.split(' ')[2] || ''}
+                        </span>
+                        <span className="text-[8px] font-extrabold text-[#008779] bg-white px-1.5 py-0.5 rounded-sm mt-1 border border-slate-100 shadow-2xs">
+                          {dateInfo.relative}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[11px] font-mono font-black text-[#008779] bg-[#E8F6F4] px-2 py-0.5 rounded-md">
+                            {evt.report_code || evt.id}
+                          </span>
+                          {getRiskBadge(evt.risk_level, evt.sif_risk_score)}
+                          {getStatusBadge(evt)}
+                          <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {dateInfo.formattedTime}
+                          </span>
+                        </div>
+
+                        <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 group-hover:text-[#008779] transition leading-snug line-clamp-1">
+                          {evt.hazard || evt.activity}
+                        </h4>
+
+                        <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed font-normal">
+                          {evt.description}
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                            <MapPin className="h-3 w-3 text-slate-400" />
+                            {evt.site} {evt.unit ? `• ${evt.unit}` : ''}
+                          </span>
+
+                          {evt.life_saving_rule && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#008779] bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">
+                              <Tag className="h-3 w-3" />
+                              {evt.life_saving_rule}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action View Button */}
+                    <div className="flex items-center gap-2 shrink-0 self-end md:self-center pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 w-full md:w-auto justify-between md:justify-end">
+                      <button
+                        onClick={() => setPopupEvent(evt)}
+                        className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition-all duration-150 cursor-pointer shadow-2xs hover:shadow-xs"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>View Issue</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {/* Bottom Summary Bar */}
+        <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs font-semibold text-slate-500">
+          <span>Showing {filteredEvents.length} of {events.length} total recorded issues</span>
+          <button
+            onClick={() => onNavigateTo?.('inbox')}
+            className="text-[#008779] hover:text-[#007064] font-extrabold flex items-center gap-1 hover:underline cursor-pointer"
+          >
+            <span>Open Full Safety Inbox</span>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+      </div>
+
+      {/* 4. BOTTOM SECTION: SAFETY PROGRESS PIE CHART & PRECURSOR TASKS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        {/* Card 1: Safety & Telemetry Progress Circular Pie / Donut Chart */}
+        <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div>
               <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
                 Safety Progress
               </h3>
-              <button
-                onClick={() => onNavigateTo?.('sif')}
-                className="px-3 py-1 bg-[#008779] text-white text-[10px] font-bold rounded-full hover:bg-[#007064] transition cursor-pointer shadow-2xs"
-              >
-                View All
-              </button>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                Barrier health metrics & issue resolution rate
+              </p>
             </div>
+            <button
+              onClick={() => onNavigateTo?.('sif')}
+              className="px-3 py-1 bg-[#008779] text-white text-[10px] font-bold rounded-full hover:bg-[#007064] transition cursor-pointer shadow-2xs"
+            >
+              View All
+            </button>
+          </div>
 
-            {/* Circular Progress Gauge */}
-            <div className="flex flex-col items-center justify-center py-2">
-              <div className="relative h-40 w-40 flex items-center justify-center">
-                {/* SVG Concentric Donut Rings */}
-                <svg className="h-full w-full transform -rotate-90" viewBox="0 0 100 100">
-                  {/* Background Ring */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    className="text-slate-100"
-                    strokeWidth="8"
-                    stroke="currentColor"
-                    fill="transparent"
-                  />
-                  {/* Outer Purple Accent Segment */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    className="text-[#8B5CF6]"
-                    strokeWidth="8"
-                    strokeDasharray="251.2"
-                    strokeDashoffset="180"
-                    strokeLinecap="round"
-                    stroke="currentColor"
-                    fill="transparent"
-                  />
-                  {/* Outer Primary Teal Ring */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    className="text-[#008779]"
-                    strokeWidth="8"
-                    strokeDasharray="251.2"
-                    strokeDashoffset={251.2 - (251.2 * (metrics.completedRate || 75)) / 100}
-                    strokeLinecap="round"
-                    stroke="currentColor"
-                    fill="transparent"
-                  />
-                </svg>
+          {/* Circular Progress Gauge */}
+          <div className="flex flex-col items-center justify-center py-2">
+            <div className="relative h-44 w-44 flex items-center justify-center">
+              {/* SVG Concentric Donut Rings */}
+              <svg className="h-full w-full transform -rotate-90" viewBox="0 0 100 100">
+                {/* Background Ring */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  className="text-slate-100"
+                  strokeWidth="8"
+                  stroke="currentColor"
+                  fill="transparent"
+                />
+                {/* Outer Purple Accent Segment */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  className="text-[#8B5CF6]"
+                  strokeWidth="8"
+                  strokeDasharray="251.2"
+                  strokeDashoffset="180"
+                  strokeLinecap="round"
+                  stroke="currentColor"
+                  fill="transparent"
+                />
+                {/* Outer Primary Teal Ring */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  className="text-[#008779]"
+                  strokeWidth="8"
+                  strokeDasharray="251.2"
+                  strokeDashoffset={251.2 - (251.2 * (metrics.completedRate || 75)) / 100}
+                  strokeLinecap="round"
+                  stroke="currentColor"
+                  fill="transparent"
+                />
+              </svg>
 
-                {/* Center Number */}
-                <div className="absolute flex flex-col items-center justify-center text-center">
-                  <span className="text-2xl font-black text-slate-900 font-mono-numbers">
-                    {metrics.completedRate > 0 ? `${metrics.completedRate}%` : '75%'}
-                  </span>
-                  <span className="text-[8px] font-extrabold uppercase tracking-wider text-slate-400">Barrier Health</span>
-                </div>
+              {/* Center Number */}
+              <div className="absolute flex flex-col items-center justify-center text-center">
+                <span className="text-3xl font-black text-slate-900 font-mono-numbers">
+                  {metrics.completedRate > 0 ? `${metrics.completedRate}%` : '75%'}
+                </span>
+                <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Barrier Health</span>
               </div>
-            </div>
-
-            {/* 3 Metric Columns */}
-            <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-slate-100">
-              <div className="border-r border-slate-100 pr-1">
-                <div className="text-xs font-black text-slate-900 font-mono-numbers">
-                  {metrics.completed}/{metrics.total || 100}
-                </div>
-                <div className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Resolved</div>
-              </div>
-              <div className="border-r border-slate-100 pr-1">
-                <div className="text-xs font-black text-slate-900 font-mono-numbers">
-                  {metrics.incompleted}/{metrics.total || 100}
-                </div>
-                <div className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Incomplete</div>
-              </div>
-              <div>
-                <div className="text-xs font-black text-rose-600 font-mono-numbers">
-                  {metrics.overdue}
-                </div>
-                <div className="text-[8px] font-bold text-rose-500 uppercase mt-0.5">Overdue</div>
-              </div>
-            </div>
-
-            <div className="text-center text-[10px] font-bold text-slate-500 pt-1">
-              Total Precursor Shield <span className="text-[#008779] font-extrabold">{metrics.completedRate || 75}% Active</span>
             </div>
           </div>
 
-          {/* Card 3: Active Precursor Tasks & Reminders */}
-          <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-                Precursor Tasks
-              </h3>
+          {/* 3 Metric Columns */}
+          <div className="grid grid-cols-3 gap-2 text-center pt-3 border-t border-slate-100">
+            <div className="border-r border-slate-100 pr-1">
+              <div className="text-sm font-black text-slate-900 font-mono-numbers">
+                {metrics.completed}/{metrics.total || 100}
+              </div>
+              <div className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Resolved</div>
+            </div>
+            <div className="border-r border-slate-100 pr-1">
+              <div className="text-sm font-black text-slate-900 font-mono-numbers">
+                {metrics.incompleted}/{metrics.total || 100}
+              </div>
+              <div className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Incomplete</div>
+            </div>
+            <div>
+              <div className="text-sm font-black text-rose-600 font-mono-numbers">
+                {metrics.overdue}
+              </div>
+              <div className="text-[9px] font-bold text-rose-500 uppercase mt-0.5">Overdue</div>
+            </div>
+          </div>
+
+          <div className="text-center text-xs font-bold text-slate-500 pt-1">
+            Total Precursor Shield <span className="text-[#008779] font-extrabold">{metrics.completedRate || 75}% Active</span>
+          </div>
+        </div>
+
+        {/* Card 2: Active Precursor Tasks & Reminders */}
+        <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
+                  Precursor Tasks
+                </h3>
+                <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                  Scheduled preventive tasks & isolation checks
+                </p>
+              </div>
               <button
                 onClick={() => onNavigateTo?.('track-actions')}
-                className="text-[10px] text-[#008779] font-bold hover:underline cursor-pointer"
+                className="text-xs text-[#008779] font-extrabold hover:underline cursor-pointer"
               >
                 View All
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 mt-4">
               <div
                 onClick={() => onNavigateTo?.('track-actions')}
-                className="p-3 bg-white border border-[#E6ECEB] rounded-2xl flex items-center justify-between hover:border-[#008779]/40 hover:shadow-xs transition cursor-pointer group"
+                className="p-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl flex items-center justify-between hover:border-[#008779]/40 hover:bg-[#E8F6F4]/30 hover:shadow-xs transition cursor-pointer group"
               >
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-[#E8F6F4] text-[#008779] flex items-center justify-center shrink-0">
-                    <Zap className="h-4.5 w-4.5" />
+                <div className="flex items-center gap-3.5">
+                  <div className="h-10 w-10 rounded-xl bg-[#E8F6F4] text-[#008779] flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                    <Zap className="h-5 w-5" />
                   </div>
                   <div>
                     <h5 className="text-xs font-extrabold text-slate-800 group-hover:text-[#008779] transition">
                       Valve Isolation Check
                     </h5>
-                    <p className="text-[9px] text-slate-400 font-semibold mt-0.5">
-                      4 Days 2 hours remaining
+                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                      FCCU Unit 04 • 4 Days 2 hours remaining
                     </p>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-[#008779] group-hover:translate-x-0.5 transition" />
               </div>
+
+              <div
+                onClick={() => onNavigateTo?.('track-actions')}
+                className="p-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl flex items-center justify-between hover:border-[#008779]/40 hover:bg-[#E8F6F4]/30 hover:shadow-xs transition cursor-pointer group"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="h-10 w-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                    <ShieldAlert className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-extrabold text-slate-800 group-hover:text-orange-600 transition">
+                      Scaffolding Green-Tag Verification
+                    </h5>
+                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                      Site Alpha • Due in 18 hours
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-orange-600 group-hover:translate-x-0.5 transition" />
+              </div>
             </div>
           </div>
 
+          <button
+            onClick={() => onNavigateTo?.('track-actions')}
+            className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-extrabold transition cursor-pointer flex items-center justify-center gap-1.5 mt-2"
+          >
+            <span>Open All Active Action Trackers</span>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
         </div>
 
       </div>

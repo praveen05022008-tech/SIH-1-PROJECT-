@@ -199,10 +199,10 @@ export const ManagerActions: React.FC<ManagerActionsProps> = ({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <span className="text-[10px] font-black text-slate-400 font-mono">{task.task_id}</span>
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${PRIORITY_DOT[task.priority] || 'bg-slate-400'}`} />
-                        <span className="text-[10px] font-bold text-slate-500">{task.priority}</span>
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${STATUS_COLORS[task.status] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-                          {task.status}
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${PRIORITY_DOT[task.priority || 'MEDIUM'] || 'bg-slate-400'}`} />
+                        <span className="text-[10px] font-bold text-slate-500">{task.priority || 'MEDIUM'}</span>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${STATUS_COLORS[task.status || 'Assigned'] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                          {task.status || 'Assigned'}
                         </span>
                         {isOverdue(task) && (
                           <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">OVERDUE</span>

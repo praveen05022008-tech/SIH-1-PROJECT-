@@ -30,6 +30,7 @@ import { ManagerActions } from './pages/ManagerActions';
 import { ManagerAnalytics } from './pages/ManagerAnalytics';
 import { ManagerAlerts } from './pages/ManagerAlerts';
 import { ManagerRecheck } from './pages/ManagerRecheck';
+import { ManagerDashboard } from './pages/ManagerDashboard';
 import { SifRisk } from './pages/SifRisk';
 import { apiUrl } from './config/api';
 
@@ -122,7 +123,6 @@ function App() {
         if (res.ok) {
           return res.json();
         }
-        // Only force logout on explicit auth failures (not network errors)
         if (res.status === 401 || res.status === 403) {
           console.warn('Session rejected by server – clearing local session.');
           handleLogout();
@@ -383,7 +383,16 @@ function App() {
             />
           )}
 
-          {currentPage === 'dashboard' && !['Employee', 'Field Worker'].includes(user.role) && (
+          {currentPage === 'dashboard' && ['Manager', 'Safety Manager'].includes(user.role) && (
+            <ManagerDashboard 
+              user={user}
+              onNavigateTo={setCurrentPage}
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
+            />
+          )}
+
+          {currentPage === 'dashboard' && !['Employee', 'Field Worker', 'Manager', 'Safety Manager'].includes(user.role) && (
             <Dashboard 
               onViewEvent={handleViewEvent} 
               triggerNotification={triggerNotification} 

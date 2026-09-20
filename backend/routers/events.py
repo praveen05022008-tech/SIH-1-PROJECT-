@@ -149,8 +149,10 @@ def create_event_report(
     reporter_name = req.reporter_name or (user.name if user else "Frontline Employee")
 
     report = IncidentReport(
+        id=code,
         report_code=code,
         raw_text=req.raw_text,
+        description=req.raw_text,
         audio_transcript=req.audio_transcript or req.raw_text,
         audio_url=req.audio_url,
         photo_url=req.photo_url,

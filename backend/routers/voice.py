@@ -55,6 +55,8 @@ async def transcribe_audio_file(
     return {
         "status": "ok" if res.get("success", False) else "warning",
         "text": transcript,
+        "transcript": transcript,
+        "audio_transcript": transcript,
         "language": res.get("language", "en"),
         "model": res.get("model", "openai-whisper"),
         "success": res.get("success", False),

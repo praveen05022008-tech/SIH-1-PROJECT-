@@ -72,9 +72,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       case 'Field Worker':
         return [
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          { id: 'my-report', label: 'My reports', icon: FileText },
           { id: 'report-issue', label: 'Submit report', icon: CheckSquare },
-          { id: 'ai-analysis', label: 'AI analysis', icon: Cpu, badge: 'New', badgeColor: 'bg-[#008779] text-white' }
+          { id: 'my-report', label: 'My reports', icon: FileText }
         ];
 
       case 'Officer':
@@ -93,9 +92,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { id: 'assign-officer', label: 'Assign Officer', icon: UserCheck },
           { id: 're-check', label: 'Re-Check', icon: CheckSquare, badge: 'QUEUE', badgeColor: 'bg-emerald-100 text-emerald-800' },
-          { id: 'sif-risk', label: 'SIF Risk (AI)', icon: ShieldAlert, badge: 'CEREBRAS', badgeColor: 'bg-orange-100 text-orange-700' },
-          { id: 'manager-analytics', label: 'Analytics', icon: BarChart3 },
-          { id: 'manager-alerts', label: 'Alerts', icon: Bell },
           { id: 'reports', label: 'Reports', icon: FileBarChart2 }
         ];
       case 'Admin':

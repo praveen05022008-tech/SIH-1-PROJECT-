@@ -32,6 +32,8 @@ def report_to_task_dict(r: IncidentReport) -> dict:
         "reporter_email": r.reporter_email or "worker@refinery.safe",
         "priority": r.priority,
         "sif_potential": r.sif_potential,
+        "condition": r.condition or "Unsafe Condition",
+        "life_saving_rule": r.life_saving_rule or "Follow Standard Safe Isolation & Work Protocols",
         "risk_score": r.risk_score,
         "sif_risk_score": score_10,
         "risk_level": "CRITICAL" if r.sif_potential == "Critical" else ("HIGH" if r.sif_potential == "High" else ("MEDIUM" if r.sif_potential == "Medium" else "LOW")),
@@ -63,18 +65,8 @@ def list_available_officers(db: Session = Depends(get_db)):
         (User.approval_status == "Approved")
     ).all()
     
-    # If no approved officer found yet, query all officers or fallback
     if not officers:
-        officers = db.query(User).filter(
-            User.role.in_(["Officer", "Safety Officer"])
-        ).all()
-
-    if not officers:
-        return [
-            {"id": 101, "name": "Rajesh Kumar", "officer_name": "Rajesh Kumar", "email": "rajesh.kumar@refinery.safe", "role": "Safety Officer", "id_number": "EMP-301", "site": "Site Alpha - Jamnagar Complex", "status": "Available"},
-            {"id": 102, "name": "Priya Sharma", "officer_name": "Priya Sharma", "email": "priya.sharma@refinery.safe", "role": "Safety Officer", "id_number": "EMP-302", "site": "Site Beta - Barmer Block", "status": "Available"},
-            {"id": 103, "name": "Amit Patel", "officer_name": "Amit Patel", "email": "amit.patel@refinery.safe", "role": "Safety Officer", "id_number": "EMP-303", "site": "Offshore Platform KG-D6", "status": "Available"},
-        ]
+        return []
     return [
         {
             "id": u.id,
@@ -108,18 +100,30 @@ def list_manager_tasks(
 
     # Apply strict officer isolation if caller is an officer
     if req_id:
-        query = query.filter(IncidentReport.assigned_officer_id == req_id)
+        query = query.filter(
+            (IncidentReport.assigned_officer_id == req_id) &
+            (IncidentReport.officer_status != "Rejected")
+        )
     elif req_email and (req_role in ["Officer", "Safety Officer"]):
         officer_user = db.query(User).filter(User.email == req_email).first()
         if officer_user:
             query = query.filter(
-                (IncidentReport.assigned_officer_id == officer_user.id) |
-                (IncidentReport.assigned_officer_name.ilike(f"%{officer_user.name}%"))
+                (
+                    (IncidentReport.assigned_officer_id == officer_user.id) |
+                    (IncidentReport.assigned_officer_name.ilike(f"%{officer_user.name}%"))
+                ) &
+                (IncidentReport.officer_status != "Rejected")
             )
         else:
-            query = query.filter(IncidentReport.assigned_officer_name.ilike(f"%{req_email}%"))
+            query = query.filter(
+                IncidentReport.assigned_officer_name.ilike(f"%{req_email}%") &
+                (IncidentReport.officer_status != "Rejected")
+            )
     elif officer_name:
-        query = query.filter(IncidentReport.assigned_officer_name.ilike(f"%{officer_name}%"))
+        query = query.filter(
+            IncidentReport.assigned_officer_name.ilike(f"%{officer_name}%") &
+            (IncidentReport.officer_status != "Rejected")
+        )
 
     if status:
         query = query.filter(IncidentReport.status == status)
@@ -152,13 +156,16 @@ async def create_or_assign_task(request: Request, db: Session = Depends(get_db),
     if is_self:
         report.assigned_officer_id = report.manager_id
         report.assigned_officer_name = f"{report.manager_name} (Self-Assigned)"
+        report.assigned_to = report.assigned_officer_name
         report.status = "In Progress"
         report.officer_status = "Accepted"
     else:
         report.assigned_officer_id = officer_id
         report.assigned_officer_name = officer_name
+        report.assigned_to = officer_name
         report.status = "Assigned"
         report.officer_status = "Pending"
+        report.rejection_reason = None
 
     db.commit()
     db.refresh(report)
@@ -186,12 +193,13 @@ async def update_task_status(task_id: str, request: Request, db: Session = Depen
         if body.get("findings"):
             report.officer_notes = body.get("findings")
     elif action == "reject":
-        # Officer rejects -> returns to unassigned
+        # Officer rejects -> returns to unassigned queue for Manager
         report.status = "Pending Review"
         report.officer_status = "Rejected"
-        report.rejection_reason = body.get("rejection_reason") or body.get("notes") or "Officer busy"
+        report.rejection_reason = body.get("rejection_reason") or body.get("notes") or "Officer unable to take task"
         report.assigned_officer_id = None
         report.assigned_officer_name = None
+        report.assigned_to = None
     elif action == "submit-recheck" or action == "forward_recheck" or body.get("status") in ["Recheck", "Submitted"]:
         report.status = "Recheck"
         report.officer_status = "Forwarded_Recheck"

@@ -86,27 +86,53 @@ def transcribe_and_translate_audio(audio_bytes: bytes, filename: str = "voicenot
                     headers = {"Authorization": f"Bearer {settings.GROQ_API_KEY}"}
                     with open(target_audio, "rb") as af:
                         files = {
-                            "file": (os.path.basename(target_audio), af, "audio/wav"),
-                            "model": (None, groq_model),
-                            "response_format": (None, "verbose_json" if task == "transcribe" else "json")
+                            "file": (os.path.basename(target_audio), af, "audio/wav")
                         }
-                        with httpx.Client(timeout=25.0) as client:
-                            resp = client.post(groq_url, headers=headers, files=files)
+                        data = {
+                            "model": groq_model,
+                            "response_format": "json"
+                        }
+                        with httpx.Client(timeout=30.0) as client:
+                            resp = client.post(groq_url, headers=headers, files=files, data=data)
                             if resp.status_code == 200:
-                                data = resp.json()
-                                text = (data.get("text") or "").strip()
-                                lang = data.get("language", "en")
-                                print(f"[WhisperService] Successfully transcribed via Groq {groq_model}: '{text}'")
-                                return {
-                                    "success": True,
-                                    "text": text,
-                                    "language": lang,
-                                    "model": f"groq-{groq_model}"
-                                }
+                                res_json = resp.json()
+                                text = (res_json.get("text") or "").strip()
+                                lang = res_json.get("language", "en")
+                                if text:
+                                    print(f"[WhisperService] Successfully transcribed via Groq {groq_model}: '{text}'")
+                                    return {
+                                        "success": True,
+                                        "text": text,
+                                        "language": lang,
+                                        "model": f"groq-{groq_model}"
+                                    }
                 except Exception as groq_err:
-                    print(f"[WhisperService] Groq {groq_model} attempt notice:", groq_err)
+                    print(f"[WhisperService] Groq {groq_model} notice:", groq_err)
 
-        # 2. Secondary Fallback: Local Whisper Model
+        # 2. Secondary: Hugging Face Whisper Inference API
+        if settings.HF_TOKEN:
+            try:
+                hf_url = f"https://router.huggingface.co/hf-inference/models/{settings.WHISPER_MODEL or 'openai/whisper-small'}"
+                hf_headers = {"Authorization": f"Bearer {settings.HF_TOKEN}"}
+                with open(target_audio, "rb") as af:
+                    audio_payload = af.read()
+                with httpx.Client(timeout=25.0) as client:
+                    hf_resp = client.post(hf_url, headers=hf_headers, data=audio_payload)
+                    if hf_resp.status_code == 200:
+                        hf_json = hf_resp.json()
+                        hf_text = (hf_json.get("text") or "").strip()
+                        if hf_text:
+                            print(f"[WhisperService] Successfully transcribed via HF Whisper: '{hf_text}'")
+                            return {
+                                "success": True,
+                                "text": hf_text,
+                                "language": "en",
+                                "model": "hf-whisper-small"
+                            }
+            except Exception as hf_err:
+                print(f"[WhisperService] HF Whisper notice:", hf_err)
+
+        # 3. Tertiary Fallback: Local Whisper Model
         local_model = get_local_whisper_model()
         if local_model is not None:
             result = local_model.transcribe(target_audio, task=task, fp16=False)

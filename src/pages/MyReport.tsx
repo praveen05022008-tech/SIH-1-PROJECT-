@@ -6,23 +6,17 @@ import {
   ShieldAlert,
   CheckCircle2,
   AlertTriangle,
-  Calendar,
   Search,
   Filter,
   RefreshCw,
   Plus,
   Eye,
-  MoreVertical,
   ChevronLeft,
   ChevronRight,
-  Shield,
-  History,
   X,
   Trash2,
   Pencil,
-  Check,
-  AlertCircle,
-  Cloud
+  Check
 } from 'lucide-react';
 import { apiUrl } from '../config/api';
 import { User, SafetyEvent } from '../types';
@@ -33,16 +27,65 @@ interface MyReportProps {
   triggerStateRefresh?: boolean;
 }
 
+export const normalizeEmployeeStatus = (status?: string): 'Pending' | 'Completed' => {
+  const s = (status || '').toLowerCase();
+  if (s.includes('closed') || s.includes('resolved') || s.includes('completed') || s.includes('finished')) {
+    return 'Completed';
+  }
+  return 'Pending';
+};
+
 export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerStateRefresh }) => {
   const [reports, setReports] = useState<SafetyEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'COMPLETED'>('ALL');
   const [selectedReport, setSelectedReport] = useState<SafetyEvent | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [reportToDelete, setReportToDelete] = useState<SafetyEvent | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
+
+  const [editingReport, setEditingReport] = useState<SafetyEvent | null>(null);
+  const [editForm, setEditForm] = useState({
+    report_type: 'Unsafe Condition',
+    hazard_category: 'General Safety',
+    site: 'Site Alpha - Jamnagar Complex',
+    unit: 'Unit 04 - FCCU',
+    location_detail: '',
+    description: ''
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const formatReportCode = (code?: string, id?: string) => {
+    if (code) return code.replace(/^#/, '');
+    return id || 'RPT-JAM-001';
+  };
+
+  const fetchMyReports = () => {
+    const targetEmail = user?.email || (() => {
+      try {
+        const stored = localStorage.getItem('raksha_auth_user');
+        if (stored) return JSON.parse(stored).email;
+      } catch {}
+      return '';
+    })();
+    if (!targetEmail) return;
+    setLoading(true);
+    fetch(apiUrl(`/api/events?reporter_email=${encodeURIComponent(targetEmail)}`))
+      .then(res => (res.ok ? res.json() : []))
+      .then(data => setReports(Array.isArray(data) ? data : []))
+      .catch(err => {
+        console.error('Error fetching my reports:', err);
+        setReports([]);
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchMyReports();
+  }, [user?.email, triggerStateRefresh]);
 
   const handleDeleteReport = async () => {
     if (!reportToDelete) return;
@@ -52,7 +95,6 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
     const targetCode = reportToDelete.report_code;
     const reportIdentifier = targetCode || targetId;
 
-    // Optimistically remove from web state immediately
     setReports(prev => prev.filter(r => r.id !== targetId && r.report_code !== targetCode));
     setDeleteNotice(`Report #${code} deleted successfully.`);
     setTimeout(() => setDeleteNotice(null), 4500);
@@ -62,47 +104,27 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
     setReportToDelete(null);
 
     try {
-      const res = await fetch(apiUrl(`/api/events/${encodeURIComponent(reportIdentifier)}`), {
+      await fetch(apiUrl(`/api/events/${encodeURIComponent(reportIdentifier)}`), {
         method: 'DELETE'
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        console.error('Delete error from server:', err);
-      }
     } catch (err) {
       console.error('Error deleting report:', err);
     } finally {
       setDeleting(false);
-      // Re-fetch to ensure UI is in sync with DB
       fetchMyReports();
     }
   };
-
-
-  const [editingReport, setEditingReport] = useState<SafetyEvent | null>(null);
-  const [editForm, setEditForm] = useState({
-    report_type: 'Unsafe Condition',
-    hazard_category: 'General Safety',
-    site: 'Drilling Site A',
-    unit: 'Rig Floor 01',
-    location_detail: '',
-    description: ''
-  });
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   const handleOpenEdit = (report: SafetyEvent) => {
     setEditingReport(report);
     setEditForm({
       report_type: report.report_type || 'Unsafe Condition',
       hazard_category: report.hazard_category || report.life_saving_rule || 'General Safety',
-      site: report.site || 'Drilling Site A',
-      unit: report.unit || 'Rig Floor 01',
+      site: report.site || 'Site Alpha - Jamnagar Complex',
+      unit: report.unit || 'Unit 04 - FCCU',
       location_detail: report.location_detail || report.location || '',
-      description: report.description || ''
+      description: report.description || report.raw_text || ''
     });
-    setMenuOpenId(null);
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -133,26 +155,12 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
           }
           return r;
         }));
-        if (selectedReport && (selectedReport.id === editingReport.id || selectedReport.report_code === editingReport.report_code)) {
-          setSelectedReport(prev => prev ? {
-            ...prev,
-            report_type: editForm.report_type,
-            hazard_category: editForm.hazard_category,
-            hazard: editForm.hazard_category,
-            site: editForm.site,
-            unit: editForm.unit,
-            location_detail: editForm.location_detail,
-            location: editForm.location_detail,
-            description: editForm.description
-          } : null);
-        }
         setActionNotice({
           type: 'success',
           message: `Report #${formatReportCode(editingReport.report_code, editingReport.id)} updated successfully.`
         });
         setTimeout(() => setActionNotice(null), 4500);
         setEditingReport(null);
-        // Re-fetch to confirm server-side saved state
         fetchMyReports();
       } else {
         const err = await res.json().catch(() => ({}));
@@ -166,77 +174,26 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
     }
   };
 
-
-  const fetchMyReports = () => {
-    const targetEmail = user?.email || (() => {
-      try {
-        const stored = localStorage.getItem('raksha_auth_user');
-        if (stored) return JSON.parse(stored).email;
-      } catch {}
-      return '';
-    })();
-    if (!targetEmail) return;
-    setLoading(true);
-    fetch(apiUrl(`/api/events?reporter_email=${encodeURIComponent(targetEmail)}`))
-      .then(res => (res.ok ? res.json() : []))
-      .then(data => setReports(Array.isArray(data) ? data : []))
-      .catch(err => {
-        console.error('Error fetching my reports:', err);
-        setReports([]);
-      })
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    fetchMyReports();
-  }, [user?.email, triggerStateRefresh]);
-
-  // Counts for the 4 status cards
-  const needsReviewCount = useMemo(() => {
-    return reports.filter(r => {
-      const s = (r.status || '').toLowerCase();
-      return s.includes('review') || s === 'pending';
-    }).length;
+  // Counts strictly normalized to Pending vs Completed
+  const completedCount = useMemo(() => {
+    return reports.filter(r => normalizeEmployeeStatus(r.status) === 'Completed').length;
   }, [reports]);
 
-  const inProgressCount = useMemo(() => {
-    return reports.filter(r => {
-      const s = (r.status || '').toLowerCase();
-      return s.includes('progress') || s.includes('action') || s.includes('dispatch') || s.includes('investigat');
-    }).length;
+  const pendingCount = useMemo(() => {
+    return reports.filter(r => normalizeEmployeeStatus(r.status) === 'Pending').length;
   }, [reports]);
 
-  const confirmedCount = useMemo(() => {
-    return reports.filter(r => {
-      const s = (r.status || '').toLowerCase();
-      return s.includes('confirmed');
-    }).length;
-  }, [reports]);
-
-  const resolvedCount = useMemo(() => {
-    return reports.filter(r => {
-      const s = (r.status || '').toLowerCase();
-      return s.includes('resolved') || s.includes('closed') || s.includes('completed');
-    }).length;
-  }, [reports]);
-
-  // Filtered reports by search and status tab/dropdown
+  // Filtered reports
   const filteredReports = useMemo(() => {
     return reports.filter(r => {
-      // Status filter
-      if (statusFilter !== 'ALL') {
-        const s = (r.status || '').toLowerCase();
-        if (statusFilter === 'REVIEW' && !s.includes('review') && s !== 'pending') return false;
-        if (statusFilter === 'PROGRESS' && !s.includes('progress') && !s.includes('action') && !s.includes('dispatch') && !s.includes('investigat')) return false;
-        if (statusFilter === 'CONFIRMED' && !s.includes('confirmed')) return false;
-        if (statusFilter === 'RESOLVED' && !s.includes('resolved') && !s.includes('closed') && !s.includes('completed')) return false;
-      }
+      const normStatus = normalizeEmployeeStatus(r.status);
+      if (statusFilter === 'PENDING' && normStatus !== 'Pending') return false;
+      if (statusFilter === 'COMPLETED' && normStatus !== 'Completed') return false;
 
-      // Search query filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesCode = (r.report_code || '').toLowerCase().includes(q) || (r.id || '').toLowerCase().includes(q);
-        const matchesDesc = (r.description || '').toLowerCase().includes(q);
+        const matchesDesc = (r.description || r.raw_text || '').toLowerCase().includes(q);
         const matchesCat = (r.hazard_category || r.life_saving_rule || r.report_type || '').toLowerCase().includes(q);
         const matchesLoc = `${r.site || ''} ${r.unit || ''} ${r.location || ''}`.toLowerCase().includes(q);
         return matchesCode || matchesDesc || matchesCat || matchesLoc;
@@ -245,11 +202,6 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
       return true;
     });
   }, [reports, searchQuery, statusFilter]);
-
-  const formatReportCode = (code?: string, id?: string) => {
-    if (code) return code.replace(/^#/, '');
-    return id || 'SIF26165-001';
-  };
 
   return (
     <div className="font-sans text-slate-800 space-y-6 max-w-[1400px] mx-auto pb-16">
@@ -309,94 +261,69 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
             className="self-start sm:self-auto px-4 py-2.5 rounded-xl bg-[#00695C] hover:bg-[#00574B] text-white font-bold text-xs shadow-sm flex items-center gap-2 transition cursor-pointer"
           >
             <Plus className="h-4 w-4" />
-            <span>Report Safety Issue</span>
+            <span>Submit new report</span>
           </button>
         )}
       </div>
 
-      {/* 4 STATUS METRIC CARDS STRIP */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+      {/* 3 STATUS METRIC CARDS (Total, Pending, Completed) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
         
-        {/* 1. Needs Review */}
+        {/* 1. Total Reports */}
         <div
-          onClick={() => setStatusFilter(prev => (prev === 'REVIEW' ? 'ALL' : 'REVIEW'))}
+          onClick={() => setStatusFilter('ALL')}
           className={`p-4 rounded-2xl border transition cursor-pointer select-none bg-white shadow-2xs hover:shadow-xs flex items-center justify-between ${
-            statusFilter === 'REVIEW'
+            statusFilter === 'ALL'
+              ? 'border-[#008779] ring-2 ring-[#008779]/20 bg-[#E8F6F4]/30'
+              : 'border-slate-200/80 hover:border-slate-300'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-[#E8F6F4] text-[#008779] flex items-center justify-center shrink-0 border border-[#008779]/20">
+              <FileText className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xl font-black text-slate-900 leading-tight">
+                {String(reports.length).padStart(2, '0')}
+              </div>
+              <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                All Reports
+              </div>
+            </div>
+          </div>
+          <span className="h-2.5 w-2.5 rounded-full bg-[#008779]" />
+        </div>
+
+        {/* 2. Pending */}
+        <div
+          onClick={() => setStatusFilter(prev => (prev === 'PENDING' ? 'ALL' : 'PENDING'))}
+          className={`p-4 rounded-2xl border transition cursor-pointer select-none bg-white shadow-2xs hover:shadow-xs flex items-center justify-between ${
+            statusFilter === 'PENDING'
               ? 'border-amber-400 ring-2 ring-amber-400/20 bg-amber-50/20'
               : 'border-slate-200/80 hover:border-slate-300'
           }`}
         >
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200/60">
-              <FileText className="h-5 w-5" />
+              <Clock className="h-5 w-5" />
             </div>
             <div>
               <div className="text-xl font-black text-slate-900 leading-tight">
-                {String(needsReviewCount).padStart(2, '0')}
+                {String(pendingCount).padStart(2, '0')}
               </div>
               <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
-                Needs Review
+                Pending
               </div>
             </div>
           </div>
-          <span className="h-2 w-2 rounded-full bg-amber-500" />
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
         </div>
 
-        {/* 2. In Progress */}
+        {/* 3. Completed */}
         <div
-          onClick={() => setStatusFilter(prev => (prev === 'PROGRESS' ? 'ALL' : 'PROGRESS'))}
+          onClick={() => setStatusFilter(prev => (prev === 'COMPLETED' ? 'ALL' : 'COMPLETED'))}
           className={`p-4 rounded-2xl border transition cursor-pointer select-none bg-white shadow-2xs hover:shadow-xs flex items-center justify-between ${
-            statusFilter === 'PROGRESS'
-              ? 'border-blue-400 ring-2 ring-blue-400/20 bg-blue-50/20'
-              : 'border-slate-200/80 hover:border-slate-300'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-200/60">
-              <History className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-xl font-black text-slate-900 leading-tight">
-                {String(inProgressCount).padStart(2, '0')}
-              </div>
-              <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
-                In Progress
-              </div>
-            </div>
-          </div>
-          <span className="h-2 w-2 rounded-full bg-blue-500" />
-        </div>
-
-        {/* 3. Confirmed */}
-        <div
-          onClick={() => setStatusFilter(prev => (prev === 'CONFIRMED' ? 'ALL' : 'CONFIRMED'))}
-          className={`p-4 rounded-2xl border transition cursor-pointer select-none bg-white shadow-2xs hover:shadow-xs flex items-center justify-between ${
-            statusFilter === 'CONFIRMED'
-              ? 'border-purple-400 ring-2 ring-purple-400/20 bg-purple-50/20'
-              : 'border-slate-200/80 hover:border-slate-300'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-200/60">
-              <Shield className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-xl font-black text-slate-900 leading-tight">
-                {String(confirmedCount).padStart(2, '0')}
-              </div>
-              <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
-                Confirmed
-              </div>
-            </div>
-          </div>
-          <span className="h-2 w-2 rounded-full bg-purple-500" />
-        </div>
-
-        {/* 4. Resolved */}
-        <div
-          onClick={() => setStatusFilter(prev => (prev === 'RESOLVED' ? 'ALL' : 'RESOLVED'))}
-          className={`p-4 rounded-2xl border transition cursor-pointer select-none bg-white shadow-2xs hover:shadow-xs flex items-center justify-between ${
-            statusFilter === 'RESOLVED'
+            statusFilter === 'COMPLETED'
               ? 'border-emerald-400 ring-2 ring-emerald-400/20 bg-emerald-50/20'
               : 'border-slate-200/80 hover:border-slate-300'
           }`}
@@ -407,14 +334,14 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
             </div>
             <div>
               <div className="text-xl font-black text-slate-900 leading-tight">
-                {String(resolvedCount).padStart(2, '0')}
+                {String(completedCount).padStart(2, '0')}
               </div>
               <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
-                Resolved
+                Completed
               </div>
             </div>
           </div>
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
         </div>
 
       </div>
@@ -445,14 +372,12 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
         <div className="relative shrink-0">
           <select
             value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
+            onChange={e => setStatusFilter(e.target.value as any)}
             className="w-full sm:w-auto pl-3.5 pr-8 py-2 bg-white border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs focus:outline-none focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C] cursor-pointer appearance-none"
           >
             <option value="ALL">All Statuses ({reports.length})</option>
-            <option value="REVIEW">Needs Review ({needsReviewCount})</option>
-            <option value="PROGRESS">In Progress ({inProgressCount})</option>
-            <option value="CONFIRMED">Confirmed ({confirmedCount})</option>
-            <option value="RESOLVED">Resolved ({resolvedCount})</option>
+            <option value="PENDING">Pending ({pendingCount})</option>
+            <option value="COMPLETED">Completed ({completedCount})</option>
           </select>
           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
             <Filter className="h-3 w-3" />
@@ -468,7 +393,7 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
             }}
             className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold shadow-2xs transition cursor-pointer shrink-0"
           >
-            Reset Filters
+            Reset
           </button>
         )}
 
@@ -538,17 +463,23 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
                 </tr>
               ) : (
                 filteredReports.map(report => {
-                  const s = (report.status || '').toLowerCase();
-                  const isClosed = s.includes('resolved') || s.includes('closed') || s.includes('completed');
-                  const isAction = s.includes('action') || s.includes('dispatch') || s.includes('progress') || s.includes('investigat');
-                  const isReview = s.includes('review') || s === 'pending';
+                  const normStatus = normalizeEmployeeStatus(report.status);
 
                   const rawScore = report.sif_risk_score ?? (report.risk_score != null ? (report.risk_score > 10 ? report.risk_score / 10 : report.risk_score) : (report.severity_score ?? 2.5));
                   const score = Number(rawScore) || 2.5;
                   const potential = (report.sif_potential || (score >= 6.5 ? 'HIGH' : score >= 4.0 ? 'MEDIUM' : 'LOW')).toUpperCase();
                   const isHigh = potential === 'CRITICAL' || potential === 'HIGH' || score >= 6.5;
 
-                  const dateObj = new Date(report.timestamp);
+                  const parseSafeDate = (ts?: string | null): Date => {
+                    if (!ts) return new Date();
+                    const s = String(ts).trim();
+                    if (s.includes('T') && !s.endsWith('Z') && !/[+-]\d{2}(:?\d{2})?$/.test(s)) {
+                      return new Date(s + 'Z');
+                    }
+                    return new Date(s);
+                  };
+
+                  const dateObj = parseSafeDate(report.timestamp);
                   const dateFormatted = dateObj.toLocaleDateString('en-GB', {
                     day: '2-digit',
                     month: 'short',
@@ -610,26 +541,17 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
                         </span>
                       </td>
 
-                      {/* STATUS */}
+                      {/* STATUS: STRICTLY PENDING VS COMPLETED */}
                       <td className="py-3 px-4 whitespace-nowrap">
-                        {isReview && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                            Needs Review
+                        {normStatus === 'Completed' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            Completed
                           </span>
-                        )}
-                        {isAction && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                            Action Dispatched
-                          </span>
-                        )}
-                        {isClosed && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            Resolved
-                          </span>
-                        )}
-                        {!isReview && !isAction && !isClosed && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700">
-                            {report.status}
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                            Pending
                           </span>
                         )}
                       </td>
@@ -749,128 +671,71 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium">Status:</span>
-                  <div className="font-bold text-slate-800">{selectedReport.status || 'Pending Review'}</div>
+                  <div>
+                    {normalizeEmployeeStatus(selectedReport.status) === 'Completed' ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        Completed
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        Pending
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium">Location:</span>
-                  <div className="font-bold text-slate-800">{selectedReport.site || 'Site Alpha'} • {selectedReport.unit || 'Unit 04'}</div>
+                  <div className="font-bold text-slate-800">{selectedReport.site || 'Site Alpha'} - {selectedReport.unit || 'Unit 04'}</div>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium">SIF Risk Score:</span>
-                  {(() => {
-                    const rawScore = selectedReport.sif_risk_score ?? (selectedReport.risk_score != null ? (selectedReport.risk_score > 10 ? selectedReport.risk_score / 10 : selectedReport.risk_score) : (selectedReport.severity_score ?? 2.5));
-                    const score = Number(rawScore) || 2.5;
-                    const potential = (selectedReport.sif_potential || (score >= 6.5 ? 'High' : score >= 4.0 ? 'Medium' : 'Low'));
-                    const isHigh = potential.toLowerCase() === 'critical' || potential.toLowerCase() === 'high' || score >= 6.5;
-
-                    return (
-                      <div className="font-bold text-slate-800 flex items-center gap-1.5 mt-0.5">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                          isHigh 
-                            ? 'bg-rose-100 text-rose-800 border border-rose-200' 
-                            : score >= 4.0 
-                            ? 'bg-amber-100 text-amber-800 border border-amber-200' 
-                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        }`}>
-                          {potential}
-                        </span>
-                        <span>{score.toFixed(1)} / 10.0</span>
-                        {selectedReport.risk_score != null && (
-                          <span className="text-slate-400 font-medium text-[10px]">({Number(selectedReport.risk_score).toFixed(1)}/100)</span>
-                        )}
-                      </div>
-                    );
-                  })()}
+                  <span className="text-slate-400 font-medium">SIF Potential:</span>
+                  <div className="font-bold text-slate-800">{selectedReport.sif_potential || 'Medium'}</div>
                 </div>
               </div>
 
               {selectedReport.photo_url && (
-                <div className="pt-2 border-t border-slate-100 space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500 font-bold flex items-center gap-1">
-                      <span className="text-emerald-700 inline-flex items-center gap-1">
-                        <Cloud className="h-3.5 w-3.5" />
-                        <span>Cloudinary Evidence Photo</span>
-                      </span>
-                    </span>
-                    <a
-                      href={selectedReport.photo_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[#008779] hover:underline font-bold text-[11px]"
-                    >
-                      Open Full Size ↗
-                    </a>
+                <div className="pt-2 border-t border-slate-100">
+                  <span className="text-slate-400 font-medium">Photo Evidence:</span>
+                  <div className="mt-1.5 rounded-2xl overflow-hidden border border-slate-200">
+                    <img
+                      src={selectedReport.photo_url}
+                      alt="Evidence"
+                      className="w-full max-h-48 object-cover cursor-pointer hover:scale-105 transition duration-300"
+                      onClick={() => setPreviewPhoto(selectedReport.photo_url || null)}
+                    />
                   </div>
-                  <img
-                    src={selectedReport.photo_url}
-                    alt="Evidence"
-                    className="w-full max-h-56 object-cover rounded-xl mt-1 border border-slate-200 cursor-zoom-in"
-                    onClick={() => setPreviewPhoto(selectedReport.photo_url || null)}
-                  />
                 </div>
               )}
+            </div>
 
-              {/* Bottom Action Controls inside Detail Modal */}
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
-                <button
-                  onClick={() => {
-                    const rep = selectedReport;
-                    setSelectedReport(null);
-                    setReportToDelete(rep);
-                  }}
-                  className="px-3.5 py-2 border border-red-200 bg-red-50/70 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  <span>Delete</span>
-                </button>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setSelectedReport(null)}
-                    className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-bold transition cursor-pointer"
-                  >
-                    Close
-                  </button>
-                  <button
-                    onClick={() => {
-                      const rep = selectedReport;
-                      setSelectedReport(null);
-                      handleOpenEdit(rep);
-                    }}
-                    className="px-4 py-2 bg-[#005B54] hover:bg-[#004A44] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                    <span>Edit Observation</span>
-                  </button>
-                </div>
-              </div>
-
+            <div className="pt-3 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setSelectedReport(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* EDIT OBSERVATION MODAL */}
+      {/* EDIT MODAL */}
       {editingReport && (
-        <div 
+        <div
           className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-default"
           onClick={() => setEditingReport(null)}
         >
-          <div 
-            className="bg-white rounded-3xl p-6 max-w-lg w-full max-h-[92vh] overflow-y-auto shadow-2xl space-y-4 animate-in fade-in zoom-in-95 border border-slate-100"
+          <div
+            className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">
-                  Edit Observation
-                </span>
-                <h3 className="text-base font-black text-slate-900 mt-1 flex items-center gap-2">
-                  <span>{formatReportCode(editingReport.report_code, editingReport.id)}</span>
-                  <span className="text-xs font-normal text-slate-400 font-mono">({editingReport.id})</span>
-                </h3>
-              </div>
+              <h3 className="text-base font-black text-slate-900">
+                Edit Safety Observation #{formatReportCode(editingReport.report_code, editingReport.id)}
+              </h3>
               <button
                 onClick={() => setEditingReport(null)}
                 className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer"
@@ -879,131 +744,67 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Observation Type
-                  </label>
-                  <select
-                    value={editForm.report_type}
-                    onChange={e => setEditForm({ ...editForm, report_type: e.target.value })}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
-                  >
-                    <option value="Unsafe Condition">Unsafe Condition</option>
-                    <option value="Unsafe Act">Unsafe Act</option>
-                    <option value="Near Miss">Near Miss</option>
-                    <option value="Incident">Incident</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Hazard Category
-                  </label>
-                  <select
-                    value={editForm.hazard_category}
-                    onChange={e => setEditForm({ ...editForm, hazard_category: e.target.value })}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
-                  >
-                    <option value="Working at Height">Working at Height</option>
-                    <option value="Energy Isolation / LOTO">Energy Isolation / LOTO</option>
-                    <option value="Confined Space">Confined Space</option>
-                    <option value="Hot Work / Fire Safety">Hot Work / Fire Safety</option>
-                    <option value="Line of Fire / Stored Energy">Line of Fire / Stored Energy</option>
-                    <option value="Lifting Operations">Lifting Operations</option>
-                    <option value="Chemical / Gas Release">Chemical / Gas Release</option>
-                    <option value="Electrical Safety">Electrical Safety</option>
-                    <option value="General Safety">General Safety</option>
-                  </select>
-                </div>
+            <form onSubmit={handleSaveEdit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block text-slate-600 font-bold mb-1">Hazard Category</label>
+                <input
+                  type="text"
+                  value={editForm.hazard_category}
+                  onChange={e => setEditForm(prev => ({ ...prev, hazard_category: e.target.value }))}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 font-medium focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C] focus:outline-none"
+                  required
+                />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Operational Site
-                  </label>
-                  <select
+                  <label className="block text-slate-600 font-bold mb-1">Site</label>
+                  <input
+                    type="text"
                     value={editForm.site}
-                    onChange={e => setEditForm({ ...editForm, site: e.target.value })}
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
-                  >
-                    <option value="Refinery A">Refinery A</option>
-                    <option value="Drilling Site A">Drilling Site A</option>
-                    <option value="Drilling Site B">Drilling Site B</option>
-                    <option value="Digboi Refinery D">Digboi Refinery D</option>
-                    <option value="Offshore Rig 04">Offshore Rig 04</option>
-                    <option value="Numaligarh Terminal">Numaligarh Terminal</option>
-                    <option value="Barauni Unit E">Barauni Unit E</option>
-                  </select>
+                    onChange={e => setEditForm(prev => ({ ...prev, site: e.target.value }))}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 font-medium focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C] focus:outline-none"
+                    required
+                  />
                 </div>
-
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Unit / Plant Area
-                  </label>
+                  <label className="block text-slate-600 font-bold mb-1">Unit</label>
                   <input
                     type="text"
                     value={editForm.unit}
-                    onChange={e => setEditForm({ ...editForm, unit: e.target.value })}
-                    placeholder="e.g. Rig Floor 01, CDU Area, FCCU"
-                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                    onChange={e => setEditForm(prev => ({ ...prev, unit: e.target.value }))}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 font-medium focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C] focus:outline-none"
+                    required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Specific Location Details
-                </label>
-                <input
-                  type="text"
-                  value={editForm.location_detail}
-                  onChange={e => setEditForm({ ...editForm, location_detail: e.target.value })}
-                  placeholder="e.g. Near Mud Pump Area, Substructure elevation +12m"
-                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Observation Narrative / Description <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-slate-600 font-bold mb-1">Observation Description</label>
                 <textarea
-                  rows={4}
-                  required
+                  rows={3}
                   value={editForm.description}
-                  onChange={e => setEditForm({ ...editForm, description: e.target.value })}
-                  placeholder="Detail the hazard observed, context, equipment, or unsafe actions..."
-                  className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition leading-relaxed"
+                  onChange={e => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 font-medium focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C] focus:outline-none"
+                  required
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setEditingReport(null)}
-                  className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-bold transition cursor-pointer"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={savingEdit}
-                  className="px-5 py-2.5 bg-[#005B54] hover:bg-[#004A44] disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md shadow-[#005B54]/20"
+                  className="px-5 py-2 bg-[#008779] hover:bg-[#007064] text-white font-bold rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5"
                 >
-                  {savingEdit ? (
-                    <>
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                      <span>Saving Changes...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check className="h-3.5 w-3.5" />
-                      <span>Save Changes</span>
-                    </>
-                  )}
+                  {savingEdit ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  <span>Save Changes</span>
                 </button>
               </div>
             </form>
@@ -1013,112 +814,60 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
 
       {/* DELETE CONFIRMATION MODAL */}
       {reportToDelete && (
-        <div 
+        <div
           className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-default"
-          onClick={() => !deleting && setReportToDelete(null)}
+          onClick={() => setReportToDelete(null)}
         >
-          <div 
-            className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95 border border-slate-100"
+          <div
+            className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95 text-center"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-2xl bg-red-50 text-red-600 border border-red-200/60 flex items-center justify-center shrink-0">
-                <Trash2 className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-black text-slate-900">Delete Observation Report?</h3>
-                <p className="text-xs text-slate-400 font-mono mt-0.5">
-                  #{formatReportCode(reportToDelete.report_code, reportToDelete.id)}
-                </p>
-              </div>
+            <div className="h-12 w-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto border border-red-100">
+              <Trash2 className="h-6 w-6" />
             </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Are you sure you want to permanently delete this observation? All linked precursor data, audits, and task records will be permanently removed. This action cannot be undone.
-            </p>
-
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700">
-              <span className="font-bold text-slate-900 block mb-0.5">{reportToDelete.hazard_category || reportToDelete.report_type}</span>
-              <p className="text-slate-500 line-clamp-2 text-[11px]">{reportToDelete.description || 'No description'}</p>
+            <div>
+              <h3 className="text-base font-black text-slate-900">Delete Observation Report?</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Are you sure you want to delete report <span className="font-bold text-slate-800">#{formatReportCode(reportToDelete.report_code, reportToDelete.id)}</span>? This action cannot be undone.
+              </p>
             </div>
-
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+            <div className="flex gap-2 pt-2">
               <button
-                type="button"
-                disabled={deleting}
                 onClick={() => setReportToDelete(null)}
-                className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-bold transition cursor-pointer"
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
-                type="button"
-                disabled={deleting}
                 onClick={handleDeleteReport}
-                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md shadow-red-600/20"
+                disabled={deleting}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1"
               >
-                {deleting ? (
-                  <>
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span>Delete Permanently</span>
-                  </>
-                )}
+                {deleting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                <span>Delete</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* PHOTO LIGHTBOX MODAL */}
+      {/* PHOTO PREVIEW MODAL */}
       {previewPhoto && (
         <div
-          className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4 cursor-zoom-out"
+          className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
           onClick={() => setPreviewPhoto(null)}
         >
-          <div
-            className="bg-white rounded-3xl p-4 max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl space-y-3 cursor-default"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Photo Evidence</span>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  Cloudinary CDN
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <a
-                  href={previewPhoto}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-2.5 py-1 text-xs font-bold text-[#008779] hover:bg-[#E8F6F4] rounded-lg border border-[#A2D9D2] transition flex items-center gap-1"
-                >
-                  <span>Open Original ↗</span>
-                </a>
-                <button
-                  onClick={() => setPreviewPhoto(null)}
-                  className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-            <div className="rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center max-h-[70vh]">
-              <img
-                src={previewPhoto}
-                alt="Evidence Full"
-                className="max-h-[70vh] w-auto object-contain"
-              />
-            </div>
+          <div className="relative max-w-3xl max-h-[85vh] rounded-3xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setPreviewPhoto(null)}
+              className="absolute top-4 right-4 h-8 w-8 rounded-full bg-slate-900/70 hover:bg-slate-900 text-white flex items-center justify-center transition cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+            <img src={previewPhoto} alt="Evidence Full Preview" className="max-w-full max-h-[80vh] object-contain rounded-2xl" />
           </div>
         </div>
       )}
-
 
     </div>
   );

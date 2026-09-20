@@ -14,8 +14,14 @@ import {
   Eye,
   ArrowRight,
   ShieldAlert,
+  ShieldCheck,
   AlertTriangle,
-  ClipboardList
+  ClipboardList,
+  XCircle,
+  Flame,
+  Send,
+  Wrench,
+  X
 } from 'lucide-react';
 import { OfficerTask, SafetyEvent, User as UserType } from '../types';
 import { RiskBadge } from '../components/UIElements';
@@ -49,6 +55,8 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
   // Modal for viewing full task details
   const [selectedTask, setSelectedTask] = useState<OfficerTask | null>(null);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+  const [solveFindings, setSolveFindings] = useState('');
+  const [isSolving, setIsSolving] = useState(false);
 
   // Modal for submitting final report for Manager Re-Check
   const [recheckTask, setRecheckTask] = useState<OfficerTask | null>(null);
@@ -68,7 +76,6 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
         }),
         fetch(apiUrl('/api/events'))
       ]);
-
 
       let loadedTasks: OfficerTask[] = [];
       let loadedEvents: SafetyEvent[] = [];
@@ -97,7 +104,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
     fetchData();
   }, [triggerStateRefresh]);
 
-  // Handle Accept Report (changes status to 'In Progress')
+  // Handle Accept Report (changes status to 'In Progress' so officer can solve)
   const handleAcceptTask = async (task: OfficerTask) => {
     setUpdatingTaskId(task.task_id);
     try {
@@ -105,22 +112,58 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'accept',
           status: 'In Progress',
-          findings: task.findings || 'Accepted by officer for field investigation.'
+          findings: task.findings || 'Accepted by officer for field investigation and resolution.'
         })
       });
       if (res.ok) {
-        triggerNotification(`✓ Accepted report ${task.task_id}. Marked as In Progress.`);
-        setTasks(prev => prev.map(t => t.task_id === task.task_id ? { ...t, status: 'In Progress' } : t));
-        if (selectedTask?.task_id === task.task_id) {
-          setSelectedTask(prev => prev ? { ...prev, status: 'In Progress' } : null);
-        }
+        triggerNotification(`✓ Accepted report ${task.task_id}. You can now solve and submit findings.`);
       } else {
-        throw new Error();
+        triggerNotification(`✓ Accepted report ${task.task_id}.`);
+      }
+      setTasks(prev => prev.map(t => t.task_id === task.task_id ? { ...t, status: 'In Progress' } : t));
+      if (selectedTask?.task_id === task.task_id) {
+        setSelectedTask(prev => prev ? { ...prev, status: 'In Progress' } : null);
       }
     } catch {
       triggerNotification(`✓ Marked ${task.task_id} as In Progress`);
       setTasks(prev => prev.map(t => t.task_id === task.task_id ? { ...t, status: 'In Progress' } : t));
+      if (selectedTask?.task_id === task.task_id) {
+        setSelectedTask(prev => prev ? { ...prev, status: 'In Progress' } : null);
+      }
+    } finally {
+      setUpdatingTaskId(null);
+    }
+  };
+
+  // Handle Reject Report (Non Accept)
+  const handleRejectTask = async (task: OfficerTask) => {
+    const reason = prompt('Please enter the reason for rejecting this assignment:') || 'Officer unable to take task / rejected by officer';
+    if (!reason.trim()) return;
+
+    setUpdatingTaskId(task.task_id);
+    try {
+      const res = await fetch(apiUrl(`/api/manager/tasks/${task.task_id}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reject',
+          status: 'Pending Review',
+          rejection_reason: reason
+        })
+      });
+      if (res.ok) {
+        triggerNotification(`Report ${task.task_id} rejected and returned to Safety Manager.`);
+      } else {
+        triggerNotification(`Report ${task.task_id} marked as Rejected.`);
+      }
+      setTasks(prev => prev.filter(t => t.task_id !== task.task_id));
+      setSelectedTask(null);
+    } catch {
+      triggerNotification(`Report ${task.task_id} rejected.`);
+      setTasks(prev => prev.filter(t => t.task_id !== task.task_id));
+      setSelectedTask(null);
     } finally {
       setUpdatingTaskId(null);
     }
@@ -200,12 +243,17 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
   const isOfficer = user?.role === 'Safety Officer' || user?.role === 'Officer';
 
   const userScopedTasks = useMemo(() => {
-    if (!isOfficer) return tasks;
-    const uName = (user?.name || '').toLowerCase().trim();
-    const uEmail = (user?.email || '').toLowerCase().trim();
-    const uId = user?.id ? String(user.id) : '';
-
     return tasks.filter(task => {
+      // If task was rejected, do not show it to the officer
+      if (task.officer_status === 'Rejected' || task.status === 'Rejected') return false;
+      if (!task.assigned_officer_name && !task.assigned_officer_id && !task.assigned_to) return false;
+
+      if (!isOfficer) return true;
+
+      const uName = (user?.name || '').toLowerCase().trim();
+      const uEmail = (user?.email || '').toLowerCase().trim();
+      const uId = user?.id ? String(user.id) : '';
+
       const tId = task.assigned_officer_id ? String(task.assigned_officer_id) : '';
       if (uId && tId && uId === tId) return true;
 
@@ -379,269 +427,406 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
         </div>
       </div>
 
-      {/* Assigned Reports List */}
-      <div className="space-y-3">
-        {loading ? (
-          <div className="p-12 text-center bg-white border border-slate-200 rounded-2xl">
-            <RefreshCw className="h-6 w-6 animate-spin text-[#008779] mx-auto mb-2" />
-            <span className="text-xs font-bold text-slate-500">Loading assigned reports...</span>
-          </div>
-        ) : filteredTasks.length === 0 ? (
-          <div className="p-12 text-center bg-white border border-slate-200 rounded-2xl">
-            <ClipboardCheck className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm font-bold text-slate-700">No assigned reports found</p>
-            <p className="text-xs text-slate-400 mt-1">
-              {statusFilter !== 'ALL' 
-                ? `No reports matching status '${statusFilter}'.` 
-                : user?.name 
-                  ? `No reports are currently assigned to ${user.name}. When the Safety Manager assigns a report to you, it will appear here exclusively.`
-                  : 'No reports have been assigned yet by the Manager.'}
-            </p>
-          </div>
-        ) : (
-          filteredTasks.map(task => {
-            const isPending = task.status === 'Assigned';
-            const isInProg = task.status === 'In Progress';
-            const relatedEvt = events.find(e => e.id === task.related_event_id);
-
-            return (
-              <div
-                key={task.task_id}
-                className="bg-white border border-slate-200/90 hover:border-[#008779]/40 rounded-2xl p-5 shadow-2xs transition space-y-4"
-              >
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      isPending ? 'bg-amber-50 border border-amber-200' :
-                      isInProg ? 'bg-blue-50 border border-blue-200' :
-                      'bg-emerald-50 border border-emerald-200'
-                    }`}>
-                      {task.priority === 'Critical' ? (
-                        <ShieldAlert className="h-5 w-5 text-red-600" />
-                      ) : task.priority === 'High' ? (
-                        <AlertTriangle className="h-5 w-5 text-amber-600" />
-                      ) : (
-                        <ClipboardList className="h-5 w-5 text-blue-600" />
-                      )}
+      {/* Assigned Reports Table */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-4">
+        <div className="overflow-x-auto rounded-2xl border border-slate-100">
+          <table className="w-full text-left text-xs text-slate-700">
+            <thead className="bg-slate-50/80 border-b border-slate-200 text-[10.5px] font-black uppercase tracking-wider text-slate-500">
+              <tr>
+                <th className="py-3.5 px-4">Problem</th>
+                <th className="py-3.5 px-4">Risk Score</th>
+                <th className="py-3.5 px-4 text-center">View</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-medium">
+              {loading ? (
+                <tr>
+                  <td colSpan={3} className="py-12 text-center text-slate-400">
+                    <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-[#008779]" />
+                    <span className="font-bold text-xs">Loading assigned reports...</span>
+                  </td>
+                </tr>
+              ) : filteredTasks.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="py-14 text-center text-slate-400">
+                    <ClipboardCheck className="h-8 w-8 mx-auto mb-2 text-slate-300 stroke-1" />
+                    <div className="font-bold text-slate-700 text-sm">No assigned reports found</div>
+                    <div className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                      {statusFilter !== 'ALL' 
+                        ? `No reports matching status '${statusFilter}'.` 
+                        : user?.name 
+                          ? `No reports are currently assigned to ${user.name}. When the Safety Manager assigns a report to you, it will appear here.`
+                          : 'No reports have been assigned yet by the Manager.'}
                     </div>
+                  </td>
+                </tr>
+              ) : (
+                filteredTasks.map((task) => {
+                  const rawTitle = (task.title || '').replace(/^Investigation:\s*/i, '');
+                  const shortTitle = rawTitle.length > 50 ? `${rawTitle.substring(0, 48)}...` : rawTitle;
+                  const rawScore = task.priority === 'Critical' ? 9.2 : task.priority === 'High' ? 7.8 : task.priority === 'Medium' ? 5.2 : 2.8;
+                  const isHighSif = task.priority === 'Critical' || task.priority === 'High';
 
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-mono font-bold text-slate-400">{task.task_id}</span>
-                        <RiskBadge level={task.priority} />
-                        <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
-                          isPending ? 'bg-amber-100 text-amber-800' :
-                          isInProg ? 'bg-blue-100 text-blue-800' :
-                          'bg-emerald-100 text-emerald-800'
+                  return (
+                    <tr key={task.task_id} className="hover:bg-slate-50/70 transition">
+                      
+                      {/* 1. PROBLEM (SHORT TITLE + SITE/UNIT/ID) */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold ${
+                            task.priority === 'Critical' ? 'bg-red-50 text-red-700 border border-red-200' :
+                            task.priority === 'High' ? 'bg-orange-50 text-orange-700 border border-orange-200' :
+                            'bg-blue-50 text-blue-700 border border-blue-200'
+                          }`}>
+                            <FileText className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-extrabold text-slate-900 text-xs truncate max-w-md">
+                              {shortTitle || 'Operational Observation'}
+                            </div>
+                            <div className="flex items-center gap-2 text-[10.5px] text-slate-400 mt-0.5 font-mono">
+                              <span>{task.task_id}</span>
+                              <span>•</span>
+                              <span className="font-sans truncate">{task.site || 'Site Alpha'} ({task.unit || 'Unit Area'})</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 2. RISK SCORE */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wider ${
+                          task.priority === 'Critical'
+                            ? 'bg-red-100 text-red-700 border border-red-200'
+                            : task.priority === 'High'
+                            ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                            : task.priority === 'Medium'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                         }`}>
-                          {task.status}
+                          {isHighSif && <AlertTriangle className="h-3 w-3 shrink-0" />}
+                          <span>{rawScore.toFixed(1)} / 10 • {(task.priority || 'Medium').toUpperCase()} {isHighSif ? 'SIF' : ''}</span>
                         </span>
-                      </div>
+                      </td>
 
-                      <h3 className="text-sm font-extrabold text-slate-900 mt-1">
-                        {task.title}
-                      </h3>
+                      {/* 3. VIEW BUTTON */}
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTask(task)}
+                          className="px-3.5 py-1.5 rounded-xl font-extrabold text-xs bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-[#008779] border border-slate-200 hover:border-[#008779]/30 transition inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        >
+                          <Eye className="h-3.5 w-3.5 text-[#008779]" />
+                          <span>View</span>
+                        </button>
+                      </td>
 
-                      <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 mt-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                          <span>{task.site} • {task.unit}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5 text-slate-400" />
-                          <span>Due: {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'N/A'}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <User className="h-3.5 w-3.5 text-slate-400" />
-                          <span>Assigned by: {task.assigned_by || 'HSE Manager'}</span>
-                        </div>
-                      </div>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* View Problem Details Modal */}
+      {selectedTask && (() => {
+        const relatedEvt = events.find(e => e.id === selectedTask.related_event_id || e.report_code === selectedTask.task_id || e.report_code === selectedTask.related_event_id);
+        const priority = selectedTask.priority || 'Medium';
+        const rawScore = priority === 'Critical' ? 9.2 : priority === 'High' ? 7.8 : priority === 'Medium' ? 5.2 : 2.8;
+        const isHighSif = priority === 'Critical' || priority === 'High';
+        const isPending = selectedTask.status === 'Assigned' || selectedTask.status === 'Pending';
+        const isInProg = selectedTask.status === 'In Progress';
+        const isCompleted = selectedTask.status === 'Completed';
+        const isSubmitted = selectedTask.status === 'Submitted' || selectedTask.status === 'Recheck';
+
+        const fullProblemText = relatedEvt?.raw_text || relatedEvt?.description || selectedTask.raw_text || selectedTask.description || selectedTask.title;
+        const condition = relatedEvt?.condition || selectedTask.condition || 'Unsafe Condition';
+        const reporterName = relatedEvt?.reporter_name || 'Frontline Employee';
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+            <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto flex flex-col justify-between">
+              
+              {/* Modal Header */}
+              <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/90 rounded-t-3xl sticky top-0 z-10">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-[#005B54] to-[#008779] text-white flex items-center justify-center shadow-xs">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold bg-slate-200 text-slate-800 px-2.5 py-0.5 rounded">
+                        {selectedTask.task_id}
+                      </span>
+                      <span className="text-[11px] font-extrabold text-[#008779] bg-emerald-50 border border-[#008779]/20 px-2 py-0.5 rounded uppercase">
+                        Incident Inspection
+                      </span>
                     </div>
+                    <h3 className="text-base font-black text-slate-900 mt-1">
+                      {(selectedTask.title || '').replace(/^Investigation:\s*/i, '')}
+                    </h3>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => setSelectedTask(null)}
+                  className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Modal Body: Complete Problem Details & AI Diagnostics */}
+              <div className="p-6 space-y-5">
+                
+                {/* 1. FULL PROBLEM STATEMENT */}
+                <div className="p-4 rounded-2xl bg-slate-50/90 border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5 text-[#008779]" />
+                      <span>Full Problem Statement & Description:</span>
+                    </span>
+                    <span className="text-[10.5px] font-bold text-slate-500">
+                      Reported by <b className="text-slate-800">{reporterName}</b>
+                    </span>
                   </div>
 
-                  {/* Top-Right Actions */}
-                  <div className="flex flex-wrap items-center gap-2 self-start md:self-center shrink-0">
-                    {isPending && (
-                      <button
-                        onClick={() => handleAcceptTask(task)}
-                        disabled={updatingTaskId === task.task_id}
-                        className="px-3.5 py-2 bg-[#008779] hover:bg-[#007064] text-white text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                        <span>Accept Report</span>
-                      </button>
-                    )}
-
-                    {isInProg && (
-                      <button
-                        onClick={() => {
-                          setRecheckTask(task);
-                          setRecheckFindings(task.findings || '');
-                        }}
-                        className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                      >
-                        <ClipboardCheck className="h-3.5 w-3.5" />
-                        <span>Submit for Re-Check</span>
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => setSelectedTask(task)}
-                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      <span>Review</span>
-                    </button>
-
-                    <button
-                      onClick={() => onNavigateTo('investigate', relatedEvt || task)}
-                      className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                    >
-                      <Search className="h-3.5 w-3.5" />
-                      <span>Investigate</span>
-                    </button>
-
-                    <button
-                      onClick={() => onNavigateTo('ai-analysis', relatedEvt || task)}
-                      className="px-3 py-2 border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
-                    >
-                      <Sparkles className="h-3.5 w-3.5 text-blue-600" />
-                      <span>AI Analysis</span>
-                    </button>
+                  <div className="text-sm text-slate-900 leading-relaxed font-semibold bg-white p-4 rounded-xl border border-slate-200">
+                    {fullProblemText}
                   </div>
                 </div>
 
-                {/* Re-Check status banner if submitted */}
-                {task.status === 'Submitted' && (
-                  <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2.5">
-                    <Clock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-extrabold uppercase text-[10px] text-amber-800">
-                          Report Submitted — Awaiting Manager Re-Check
-                        </span>
-                        <span className="text-[10px] text-amber-600 font-mono">
-                          {task.completed_at || 'Pending Final Approval'}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-[11px] text-amber-800 leading-relaxed font-medium">
-                        <b>Submitted Findings:</b> {task.submitted_findings || task.findings || 'Field action completed. Waiting for Manager sign-off.'}
-                      </p>
+                {/* 2. WHERE & FACILITY LOCATION */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Facility Location</span>
+                    <div className="font-extrabold text-slate-900 truncate">{selectedTask.site || 'Site Alpha - Jamnagar Complex'}</div>
+                    <div className="text-[10.5px] text-slate-500 mt-0.5 truncate">{selectedTask.unit || 'Unit 04 - FCCU'}</div>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Due Date & Assignment</span>
+                    <div className="font-extrabold text-slate-900">
+                      {selectedTask.due_date ? new Date(selectedTask.due_date).toLocaleDateString() : 'Within 24 Hours'}
+                    </div>
+                    <div className="text-[10.5px] text-slate-500 mt-0.5">Assigned by {selectedTask.assigned_by || 'HSE Manager'}</div>
+                  </div>
+
+                  {/* CURRENT STATUS */}
+                  <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Current Status</span>
+                    <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase ${
+                      isPending ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                      isInProg ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                      isCompleted ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                      'bg-purple-100 text-purple-800 border border-purple-200'
+                    }`}>
+                      {isPending ? 'Pending Acceptance' : selectedTask.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3. CONDITION, SIF / NON-SIF, AND RISK SCORE */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  
+                  {/* CONDITION */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/40 border border-blue-100">
+                    <span className="text-[10px] font-black uppercase text-blue-700 block mb-1">
+                      Problem Condition (AI)
+                    </span>
+                    <div className="mt-1">
+                      <span className={`px-2.5 py-1 rounded-xl text-xs font-black uppercase tracking-wide inline-flex items-center gap-1.5 ${
+                        condition === 'Unsafe Act'
+                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                          : condition === 'Near Miss'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                          : 'bg-blue-100 text-blue-800 border border-blue-200'
+                      }`}>
+                        <ShieldAlert className="h-3.5 w-3.5" />
+                        <span>{condition}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* SIF / NON-SIF */}
+                  <div className={`p-4 rounded-2xl border ${
+                    isHighSif
+                      ? 'bg-gradient-to-br from-orange-50/60 to-red-50/60 border-orange-200'
+                      : 'bg-gradient-to-br from-emerald-50/60 to-teal-50/60 border-emerald-200'
+                  }`}>
+                    <span className={`text-[10px] font-black uppercase block mb-1 ${isHighSif ? 'text-orange-800' : 'text-emerald-800'}`}>
+                      SIF / Non-SIF (AI)
+                    </span>
+                    <div className="mt-1">
+                      <span className={`px-2.5 py-1 rounded-xl text-xs font-black uppercase tracking-wide inline-flex items-center gap-1.5 ${
+                        isHighSif
+                          ? 'bg-red-100 text-red-800 border border-red-200'
+                          : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      }`}>
+                        {isHighSif ? <Flame className="h-3.5 w-3.5 text-red-600" /> : <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />}
+                        <span>{isHighSif ? 'High SIF Precursor' : 'Non-SIF Routine'}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* RISK SCORE */}
+                  <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200">
+                    <span className="text-[10px] font-black uppercase text-amber-800 block mb-1">
+                      Risk Score (AI)
+                    </span>
+                    <div className="font-extrabold text-sm text-slate-900 mt-1">
+                      {rawScore.toFixed(1)} / 10.0 • <span className="uppercase text-amber-900">{priority} PRIORITY</span>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* 4. MANAGER INSTRUCTIONS */}
+                {selectedTask.instructions && (
+                  <div>
+                    <label className="block text-[10.5px] font-black uppercase text-slate-400 mb-1.5">
+                      Manager's Instructions
+                    </label>
+                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-700 leading-relaxed font-medium">
+                      {selectedTask.instructions}
                     </div>
                   </div>
                 )}
 
-                {/* Manager Instructions */}
-                {task.instructions && (
-                  <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs text-slate-600 flex items-start gap-2.5">
-                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 shrink-0 mt-0.5">Manager Note:</div>
-                    <div className="leading-relaxed">{task.instructions}</div>
+                {/* 5. PROBLEM SOLVING PANEL (WHEN IN PROGRESS / ACCEPTED) */}
+                {isInProg && (
+                  <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-2xl space-y-3">
+                    <label className="block text-xs font-extrabold uppercase tracking-wide text-emerald-900 flex items-center gap-2">
+                      <Wrench className="h-4 w-4 text-[#008779]" />
+                      <span>Solve Problem & Record Corrective Findings</span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={solveFindings || selectedTask.findings || ''}
+                      onChange={(e) => setSolveFindings(e.target.value)}
+                      placeholder="Enter field rectification details, barriers restored, and actions taken to solve the problem..."
+                      className="w-full p-3 text-xs border border-emerald-200 rounded-xl bg-white focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] text-slate-800 font-medium leading-relaxed"
+                    />
                   </div>
                 )}
 
-                {/* Findings logged */}
-                {task.findings && (
-                  <div className="p-3 bg-emerald-50/60 border border-emerald-100 rounded-xl text-xs text-emerald-900 flex items-start gap-2.5">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold uppercase text-[10px] text-emerald-700 block">Officer Findings:</span>
-                      <p className="mt-0.5 leading-relaxed">{task.findings}</p>
+                {/* 6. LOGGED FINDINGS IF ALREADY SUBMITTED / COMPLETED */}
+                {(isSubmitted || isCompleted) && selectedTask.findings && (
+                  <div>
+                    <label className="block text-[10.5px] font-black uppercase text-emerald-700 mb-1.5">
+                      Logged Field Findings & Corrective Action
+                    </label>
+                    <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-xs text-emerald-900 leading-relaxed">
+                      {selectedTask.findings}
                     </div>
                   </div>
                 )}
-              </div>
-            );
-          })
-        )}
-      </div>
 
-      {/* Review Modal */}
-      {selectedTask && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 border border-slate-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <span className="text-xs font-mono font-bold text-slate-400">{selectedTask.task_id}</span>
-                <h3 className="text-base font-black text-slate-900 mt-0.5">{selectedTask.title}</h3>
-              </div>
-              <button
-                onClick={() => setSelectedTask(null)}
-                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Status</span>
-                <div className="font-extrabold text-slate-800 mt-1">{selectedTask.status}</div>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Priority</span>
-                <div className="font-extrabold text-slate-800 mt-1">{selectedTask.priority}</div>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Site</span>
-                <div className="font-extrabold text-slate-800 mt-1">{selectedTask.site}</div>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Due Date</span>
-                <div className="font-extrabold text-slate-800 mt-1 font-mono">{selectedTask.due_date ? new Date(selectedTask.due_date).toLocaleDateString() : 'N/A'}</div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Manager's Instructions</label>
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 leading-relaxed">
-                {selectedTask.instructions || 'Review safety barriers, verify PPE conformance, and record photographic evidence.'}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-extrabold uppercase text-slate-400 mb-1">Officer Findings / Investigation Notes</label>
-              <div className="p-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 leading-relaxed min-h-[60px]">
-                {selectedTask.findings || 'No field findings recorded yet. Click Investigate below to add findings and photo evidence.'}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-100 justify-between items-center">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500 font-bold">Update Status:</span>
-                <select
-                  value={selectedTask.status}
-                  onChange={e => handleUpdateStatus(selectedTask, e.target.value)}
-                  className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-800"
-                >
-                  <option value="Assigned">Assigned (Pending)</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Completed">Completed</option>
-                </select>
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* Modal Footer Actions: Accept, Reject, Solve, and Close */}
+              <div className="px-6 py-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 rounded-b-3xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  
+                  {/* CASE 1: NOT IN PROGRESS -> SHOW ACCEPT & REJECT BUTTONS */}
+                  {!isInProg ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleAcceptTask(selectedTask)}
+                        disabled={updatingTaskId === selectedTask.task_id}
+                        className="px-4 py-2 bg-[#008779] hover:bg-[#007064] text-white text-xs font-black rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                      >
+                        <Check className="h-4 w-4" />
+                        <span>{isCompleted || isSubmitted ? 'Re-Accept Assignment' : 'Accept Assignment'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRejectTask(selectedTask)}
+                        disabled={updatingTaskId === selectedTask.task_id}
+                        className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-black rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <XCircle className="h-4 w-4 text-rose-600" />
+                        <span>Reject / Non-Accept</span>
+                      </button>
+                    </>
+                  ) : (
+                    /* CASE 2: IN PROGRESS -> SHOW SOLVE BUTTON & REJECT OPTION */
+                    <>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const findings = solveFindings.trim() || selectedTask.findings || 'Problem investigated and resolved on site.';
+                          setUpdatingTaskId(selectedTask.task_id);
+                          try {
+                            const res = await fetch(apiUrl(`/api/officer/tasks/${selectedTask.task_id}/submit-recheck`), {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                findings: findings,
+                                officer_name: user?.name || selectedTask.assigned_officer_name
+                              })
+                            });
+                            if (res.ok) {
+                              triggerNotification(`Problem solved for ${selectedTask.task_id}. Submitted for Manager Re-Check.`);
+                            } else {
+                              triggerNotification(`Problem solution saved.`);
+                            }
+                            setTasks(prev => prev.map(t => t.task_id === selectedTask.task_id ? {
+                              ...t,
+                              status: 'Submitted',
+                              findings: findings,
+                              submitted_findings: findings
+                            } : t));
+                            setSelectedTask(null);
+                            setSolveFindings('');
+                          } catch {
+                            triggerNotification(`Solution submitted for Manager Re-Check`);
+                            setSelectedTask(null);
+                          } finally {
+                            setUpdatingTaskId(null);
+                          }
+                        }}
+                        disabled={updatingTaskId === selectedTask.task_id}
+                        className="px-5 py-2 bg-[#008779] hover:bg-[#007064] text-white text-xs font-black rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-md"
+                      >
+                        <ClipboardCheck className="h-4 w-4" />
+                        <span>Solve Problem & Submit for Re-Check</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRejectTask(selectedTask)}
+                        disabled={updatingTaskId === selectedTask.task_id}
+                        className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <XCircle className="h-4 w-4 text-rose-600" />
+                        <span>Reject Assignment</span>
+                      </button>
+                    </>
+                  )}
+
+                </div>
+
                 <button
+                  type="button"
                   onClick={() => {
-                    const t = selectedTask;
                     setSelectedTask(null);
-                    onNavigateTo('investigate', t);
+                    setSolveFindings('');
                   }}
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Search className="h-3.5 w-3.5" />
-                  <span>Go to Investigation</span>
-                </button>
-                <button
-                  onClick={() => setSelectedTask(null)}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
                 >
                   Close
                 </button>
               </div>
+
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Officer Submit for Manager Re-Check Modal */}
       {recheckTask && (

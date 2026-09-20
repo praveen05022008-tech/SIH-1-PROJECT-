@@ -33,6 +33,7 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 class UserApprovalAction(BaseModel):
+    user_id: Optional[int] = None
     action: str # 'approve' or 'reject'
     reason: Optional[str] = None
 
@@ -67,6 +68,7 @@ class IncidentCreateRequest(BaseModel):
     reporter_name: Optional[str] = None
     reporter_email: Optional[str] = None
     report_type: Optional[str] = None
+    timestamp: Optional[str] = None
     # Pre-evaluated AI fields (optional, if evaluated on client or backend)
     condition: Optional[str] = None
     event: Optional[str] = None

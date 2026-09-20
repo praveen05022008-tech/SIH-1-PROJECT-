@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Any
 from database import get_db
 from models import User, IncidentReport, AuditLog, Notification
 from schemas import UserResponse, UserApprovalAction, RoleUpdateRequest
-from auth import get_current_user
+from auth import get_current_user, get_password_hash
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Console"])
 
@@ -37,6 +37,58 @@ def list_admin_users(
 
     users = query.order_by(User.created_at.desc()).all()
     return [serialize_user_for_admin(u) for u in users]
+
+@router.post("/users")
+@router.post("/create-user")
+async def create_admin_user(request: Request, db: Session = Depends(get_db)):
+    data = await request.json()
+    email = data.get("email", "").lower().strip()
+    name = data.get("name", "").strip()
+    role = data.get("role", "Employee").strip()
+    password = data.get("password", "password123")
+    id_number = data.get("id_number", "")
+    phone = data.get("phone", "")
+    address = data.get("address", "")
+    
+    if not email or not name:
+        raise HTTPException(status_code=400, detail="Name and email are required.")
+
+    existing = db.query(User).filter(User.email == email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="A user with this email already exists.")
+
+    if role in ["Safety Officer", "Officer"]:
+        role = "Officer"
+    elif role in ["Safety Manager", "Manager"]:
+        role = "Manager"
+    elif role in ["Field Worker", "Employee"]:
+        role = "Employee"
+
+    new_user = User(
+        email=email,
+        password_hash=get_password_hash(password),
+        name=name,
+        role=role,
+        id_number=id_number or None,
+        phone=phone or None,
+        address=address or None,
+        approval_status="Approved",
+        is_active=True
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    audit = AuditLog(
+        user_email="admin@refinery.safe",
+        user_role="Admin",
+        action="USER_CREATED_BY_ADMIN",
+        details=f"Admin created user {new_user.name} ({new_user.email}) with role {new_user.role}"
+    )
+    db.add(audit)
+    db.commit()
+
+    return serialize_user_for_admin(new_user)
 
 @router.get("/pending-requests")
 def list_pending_requests(db: Session = Depends(get_db)):
@@ -140,6 +192,19 @@ def list_admin_reports(limit: int = 200, db: Session = Depends(get_db)):
             "timestamp": r.timestamp or r.created_at.isoformat()
         })
     return output
+
+@router.post("/approve-user")
+def approve_user_alias(req: UserApprovalAction, db: Session = Depends(get_db)):
+    target = db.query(User).filter(User.id == req.user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if req.action == "reject":
+        target.approval_status = "Rejected"
+    else:
+        target.approval_status = "Approved"
+        target.is_active = True
+    db.commit()
+    return {"success": True, "message": f"User {target.email} status updated to {target.approval_status}"}
 
 @router.post("/users/{user_id}/approve")
 def approve_user(user_id: int, db: Session = Depends(get_db)):
@@ -278,17 +343,29 @@ async def batch_delete_reports(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/audit-logs")
 def list_admin_audit_logs(limit: int = 300, db: Session = Depends(get_db)):
-    logs = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit).all()
+    logs = db.query(AuditLog).order_by(AuditLog.id.desc()).limit(limit).all()
     output = []
     for log in logs:
+        actor_name = "System"
+        if log.actor_name:
+            actor_name = log.actor_name
+        elif log.user_email and "@" in str(log.user_email):
+            actor_name = str(log.user_email).split("@")[0].capitalize()
+        elif log.user_email:
+            actor_name = str(log.user_email)
+
+        timestamp_str = ""
+        if log.timestamp:
+            timestamp_str = log.timestamp.isoformat() if hasattr(log.timestamp, "isoformat") else str(log.timestamp)
+
         output.append({
             "id": log.id,
             "event_id": f"AUD-{log.id:04d}",
-            "action": log.action,
-            "actor_name": log.user_email.split("@")[0].capitalize(),
-            "actor_role": log.user_role or "System",
+            "action": log.action or "SYSTEM_EVENT",
+            "actor_name": actor_name,
+            "actor_role": log.user_role or log.actor_role or "System",
             "details": log.details or "",
-            "user_email": log.user_email,
-            "timestamp": log.timestamp.isoformat() if log.timestamp else ""
+            "user_email": log.user_email or "",
+            "timestamp": timestamp_str
         })
     return output
