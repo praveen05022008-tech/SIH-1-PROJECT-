@@ -1,5 +1,6 @@
 import React from 'react';
 import { Sparkles, ShieldAlert, ShieldCheck, Flame, AlertTriangle, Cpu, CheckCircle2, Zap } from 'lucide-react';
+import { CircularProgress } from './UIElements';
 
 export interface AiDiagnosticData {
   condition?: string | null;
@@ -79,8 +80,15 @@ export const AiOutputCard: React.FC<AiOutputCardProps> = ({ data, compact = fals
             AI OUTPUT &amp; SIF INTELLIGENCE
           </span>
         </div>
-        <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
-          <Sparkles className="h-3 w-3 text-emerald-400" />
+        <div className="flex items-center gap-2 text-[10px] text-slate-400">
+          <CircularProgress
+            value={confidence}
+            size={28}
+            strokeWidth={3}
+            color="emerald"
+            trackColor="#1E293B"
+            showValue={false}
+          />
           <span>Certitude: <strong className="text-white">{confidence}%</strong></span>
         </div>
       </div>
@@ -110,11 +118,26 @@ export const AiOutputCard: React.FC<AiOutputCardProps> = ({ data, compact = fals
           </div>
         </div>
 
-        {/* Risk Score Pill */}
-        <div className="sm:text-right bg-black/40 px-3.5 py-2 rounded-xl border border-slate-800 shrink-0">
-          <div className="text-[9px] text-slate-400 uppercase font-sans font-bold">Composite Risk Score</div>
-          <div className={`text-sm font-black ${isSifYes ? 'text-rose-400' : 'text-emerald-400'}`}>
-            {score} <span className="text-[10px] text-slate-500 font-normal">/ 100</span>
+        {/* Circular Risk Score Gauge */}
+        <div className="flex items-center gap-3 bg-black/50 px-4 py-2 rounded-xl border border-slate-800 shrink-0">
+          <CircularProgress
+            value={score}
+            max={100}
+            size={48}
+            strokeWidth={4}
+            color={isSifYes ? 'rose' : 'emerald'}
+            trackColor="#1E293B"
+            displayValue={
+              <span className={`text-xs font-black font-mono ${isSifYes ? 'text-rose-400' : 'text-emerald-400'}`}>
+                {score}
+              </span>
+            }
+          />
+          <div className="text-left font-sans">
+            <div className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Composite Risk</div>
+            <div className={`text-xs font-black ${isSifYes ? 'text-rose-400' : 'text-emerald-400'}`}>
+              {score >= 70 ? 'CRITICAL' : score >= 40 ? 'ELEVATED' : 'STABLE'}
+            </div>
           </div>
         </div>
       </div>

@@ -127,6 +127,8 @@ class SafetyEvent(Base):
     photo_url = Column(String(1000), nullable=True)
     audio_url = Column(String(1000), nullable=True)
     reporter_id = Column(Integer, nullable=True)
+    investigation_photo_url = Column(String(1000), nullable=True)
+    evidence_photos = Column(Text, nullable=True)
     
     # Workflow & Assignments
     assigned_officer_id = Column(Integer, nullable=True)

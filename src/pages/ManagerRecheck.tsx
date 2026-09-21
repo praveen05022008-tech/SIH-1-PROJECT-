@@ -4,7 +4,7 @@ import {
   ShieldCheck, CheckCircle2, RotateCcw, AlertTriangle, Clock,
   RefreshCw, Search, ThumbsUp, ThumbsDown, User, MapPin,
   Calendar, FileText, Check, X, ShieldAlert, ArrowRight,
-  Flame, Sparkles, Building2, Eye
+  Flame, Sparkles, Building2, Eye, Camera, Image as ImageIcon, ZoomIn
 } from 'lucide-react';
 import { OfficerTask, User as UserType } from '../types';
 
@@ -30,6 +30,7 @@ export const ManagerRecheck: React.FC<ManagerRecheckProps> = ({
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectBox, setShowRejectBox] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
+  const [previewLightbox, setPreviewLightbox] = useState<string | null>(null);
 
   // Safe UTC Date parser
   const parseSafeDate = (ts?: string | null): Date => {
@@ -492,6 +493,98 @@ export const ManagerRecheck: React.FC<ManagerRecheckProps> = ({
                 </div>
               </div>
 
+              {/* Field Evidence Photos Uploaded by Officer */}
+              {(() => {
+                const photos: string[] = [];
+                if (Array.isArray((reviewTask as any).evidence_photos)) {
+                  photos.push(...(reviewTask as any).evidence_photos);
+                } else if (typeof (reviewTask as any).evidence_photos === 'string') {
+                  try {
+                    const parsed = JSON.parse((reviewTask as any).evidence_photos);
+                    if (Array.isArray(parsed)) photos.push(...parsed);
+                  } catch {
+                    photos.push((reviewTask as any).evidence_photos);
+                  }
+                }
+                if ((reviewTask as any).investigation_photo_url && !photos.includes((reviewTask as any).investigation_photo_url)) {
+                  photos.push((reviewTask as any).investigation_photo_url);
+                }
+                if ((reviewTask as any).evidence_photo && !photos.includes((reviewTask as any).evidence_photo)) {
+                  photos.push((reviewTask as any).evidence_photo);
+                }
+                const filteredOfficerPhotos = photos.filter(Boolean);
+
+                const workerPhoto = (reviewTask as any).initial_photo_url || (reviewTask as any).photo_url;
+
+                return (
+                  <div className="space-y-4 pt-1">
+                    {/* 1. Officer Investigation Evidence Photos */}
+                    {filteredOfficerPhotos.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+                            <Camera className="h-3.5 w-3.5 text-emerald-600" />
+                            <span>Officer Field Investigation Photos ({filteredOfficerPhotos.length}):</span>
+                          </label>
+                          <span className="text-[10px] text-slate-400 font-medium">Click photo to enlarge</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {filteredOfficerPhotos.map((imgUrl, idx) => (
+                            <div
+                              key={idx}
+                              onClick={() => setPreviewLightbox(imgUrl)}
+                              className="relative group rounded-xl overflow-hidden border border-emerald-200 bg-slate-900 cursor-zoom-in aspect-video shadow-xs hover:shadow-md transition"
+                            >
+                              <img
+                                src={imgUrl}
+                                alt={`Officer Investigation Photo ${idx + 1}`}
+                                className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold gap-1">
+                                <ZoomIn className="h-4 w-4" />
+                                <span>Enlarge</span>
+                              </div>
+                              <div className="absolute bottom-1 right-1 bg-black/70 text-white text-[9px] font-mono px-1.5 py-0.5 rounded">
+                                Evidence #{idx + 1}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs text-slate-500 flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4 text-slate-400" />
+                        <span>No field photos were attached during this officer investigation.</span>
+                      </div>
+                    )}
+
+                    {/* 2. Initial Worker Observation Photo (if distinct) */}
+                    {workerPhoto && !filteredOfficerPhotos.includes(workerPhoto) && (
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                          <ImageIcon className="h-3.5 w-3.5 text-slate-500" />
+                          <span>Initial Frontline Worker Observation Photo:</span>
+                        </label>
+                        <div
+                          onClick={() => setPreviewLightbox(workerPhoto)}
+                          className="relative group w-44 rounded-xl overflow-hidden border border-slate-200 bg-slate-900 cursor-zoom-in aspect-video shadow-xs hover:shadow-md transition"
+                        >
+                          <img
+                            src={workerPhoto}
+                            alt="Initial Worker Photo"
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold gap-1">
+                            <ZoomIn className="h-4 w-4" />
+                            <span>Enlarge</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Manager Remarks Input */}
               {!showRejectBox && (
                 <div className="space-y-1.5">
@@ -576,7 +669,28 @@ export const ManagerRecheck: React.FC<ManagerRecheckProps> = ({
               )}
 
             </div>
+          </div>
+        </div>
+      )}
 
+      {/* Lightbox Fullscreen Modal */}
+      {previewLightbox && (
+        <div
+          className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setPreviewLightbox(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-3xl p-2 border border-slate-700 shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setPreviewLightbox(null)}
+              className="absolute top-4 right-4 h-10 w-10 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition cursor-pointer z-10"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <img
+              src={previewLightbox}
+              alt="Enlarged Evidence"
+              className="max-h-[85vh] max-w-full rounded-2xl object-contain mx-auto"
+            />
           </div>
         </div>
       )}

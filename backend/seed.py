@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy import inspect, text
 from database import engine, SessionLocal, Base
 from models import User
 from auth import get_password_hash
@@ -6,6 +7,40 @@ from auth import get_password_hash
 def init_db():
     print("Verifying database schema tables...")
     Base.metadata.create_all(bind=engine)
+
+    # Automatically add missing columns if schema evolved
+    try:
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        with engine.connect() as conn:
+            for name, table in Base.metadata.tables.items():
+                if name in tables:
+                    existing_cols = {c['name'] for c in inspector.get_columns(name)}
+                    for col in table.columns:
+                        if col.name not in existing_cols:
+                            type_str = str(col.type)
+                            if 'VARCHAR' in type_str or 'String' in type_str:
+                                length = getattr(col.type, 'length', 255) or 255
+                                col_def = f"VARCHAR({length})"
+                            elif 'TEXT' in type_str:
+                                col_def = "TEXT"
+                            elif 'INTEGER' in type_str:
+                                col_def = "INT"
+                            elif 'FLOAT' in type_str:
+                                col_def = "FLOAT"
+                            elif 'BOOLEAN' in type_str:
+                                col_def = "BOOLEAN"
+                            elif 'DATETIME' in type_str:
+                                col_def = "DATETIME"
+                            else:
+                                col_def = type_str
+
+                            alter_sql = f"ALTER TABLE `{name}` ADD COLUMN `{col.name}` {col_def} NULL;"
+                            print(f"Auto-migrating missing column: {alter_sql}")
+                            conn.execute(text(alter_sql))
+                            conn.commit()
+    except Exception as ex:
+        print("Schema column verification check note:", ex)
 
     db = SessionLocal()
     try:

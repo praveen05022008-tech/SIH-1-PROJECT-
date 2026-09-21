@@ -17,6 +17,7 @@ import {
   Cpu
 } from 'lucide-react';
 import { SafetyEvent, User } from '../types';
+import { CircularProgress, RiskScoreMeter, CircularLoadingSpinner } from '../components/UIElements';
 
 interface SifRiskProps {
   user?: User | null;
@@ -360,12 +361,13 @@ export const SifRisk: React.FC<SifRiskProps> = ({ user, triggerNotification }) =
         <div className="lg:col-span-7 space-y-4">
 
           {loading ? (
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center space-y-3">
-              <RefreshCw className="h-10 w-10 text-[#008779] animate-spin mx-auto" />
-              <div className="text-sm font-black text-slate-800">Cerebras Neural Engine Processing...</div>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Evaluating energy release pathways, barrier degradation, exposure line-of-fire, and formulating OSHA/IOGP mitigation controls.
-              </p>
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-10 text-center space-y-3">
+              <CircularLoadingSpinner
+                size="xl"
+                color="teal"
+                label="Cerebras Neural Engine Processing..."
+                sublabel="Evaluating energy release pathways, barrier degradation, exposure line-of-fire, and formulating OSHA/IOGP mitigation controls."
+              />
             </div>
           ) : result ? (
             <>
@@ -388,28 +390,31 @@ export const SifRisk: React.FC<SifRiskProps> = ({ user, triggerNotification }) =
                   </p>
                 </div>
 
-                {/* Risk Rate Card (0 - 10) */}
-                <div className="bg-white border border-slate-200/90 rounded-2xl p-4.5 shadow-sm flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                {/* Risk Rate Card (0 - 10) with Circular Risk Score Meter */}
+                <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                       SIF Risk Score
                     </span>
-                    <TrendingUp className="h-4 w-4 text-orange-600" />
-                  </div>
-                  <div className="mt-1">
-                    <div className="text-3xl font-black text-slate-900 font-mono-numbers">
-                      {result.risk_rate}<span className="text-sm text-slate-400 font-normal"> / 10</span>
+                    <div className="text-2xl font-black text-slate-900 font-mono-numbers mt-1">
+                      {result.risk_rate}<span className="text-xs text-slate-400 font-normal"> / 10</span>
                     </div>
-                    <div className="text-[11px] font-bold text-orange-600 mt-0.5">
+                    <div className="text-[10.5px] font-bold text-orange-600 mt-0.5">
                       {result.sif_probability}% Fatal Potential
                     </div>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2 overflow-hidden">
-                    <div
-                      className="bg-orange-500 h-1.5 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, result.risk_rate * 10)}%` }}
-                    />
-                  </div>
+                  <CircularProgress
+                    value={result.risk_rate * 10}
+                    max={100}
+                    size={58}
+                    strokeWidth={5}
+                    color={result.risk_rate >= 7 ? 'rose' : result.risk_rate >= 4 ? 'amber' : 'emerald'}
+                    displayValue={
+                      <span className="text-xs font-black font-mono text-slate-800">
+                        {result.risk_rate.toFixed(1)}
+                      </span>
+                    }
+                  />
                 </div>
 
                 {/* Life-Saving Rule Card */}

@@ -296,7 +296,9 @@ export const Investigate: React.FC<InvestigateProps> = ({
           officer_name: user?.name || 'Safety Officer Lead',
           root_cause: rootCause,
           corrective_actions: correctiveAction.trim(),
-          evidence_photos: evidencePhotos
+          evidence_photos: evidencePhotos,
+          photo_url: evidencePhotos.length > 0 ? evidencePhotos[0] : null,
+          evidence_photo: evidencePhotos.length > 0 ? evidencePhotos[0] : null
         })
       });
 
@@ -308,7 +310,9 @@ export const Investigate: React.FC<InvestigateProps> = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             status: 'Confirmed',
-            remarks: `Field investigation completed by ${user?.name || 'Safety Officer'}: ${findings}. Root Cause: ${rootCause}. Corrective Action: ${correctiveAction}.`
+            remarks: `Field investigation completed by ${user?.name || 'Safety Officer'}: ${findings}. Root Cause: ${rootCause}. Corrective Action: ${correctiveAction}.`,
+            evidence_photos: evidencePhotos,
+            photo_url: evidencePhotos.length > 0 ? evidencePhotos[0] : null
           })
         });
       }

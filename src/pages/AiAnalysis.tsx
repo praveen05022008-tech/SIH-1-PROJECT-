@@ -19,7 +19,7 @@ import {
   Users
 } from 'lucide-react';
 import { SafetyEvent, User } from '../types';
-import { RiskBadge } from '../components/UIElements';
+import { RiskBadge, CircularProgress, RiskScoreMeter, ConfidenceGauge, CircularLoadingSpinner } from '../components/UIElements';
 import { AiOutputCard } from '../components/AiOutputCard';
 
 interface AiAnalysisProps {
@@ -138,6 +138,7 @@ export const AiAnalysis: React.FC<AiAnalysisProps> = ({
   const confidenceScore = activeEvent?.confidence ?? 89.5;
   const sifProbability = activeEvent?.sif_probability ?? 74.0;
   const isSifPrecursor = activeEvent?.is_sif_precursor === 'YES' || sifProbability >= 50.0;
+  const riskScoreVal = activeEvent?.risk_score ?? (isSifPrecursor ? 78 : 25);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans text-slate-800">
@@ -173,60 +174,84 @@ export const AiAnalysis: React.FC<AiAnalysisProps> = ({
         </div>
       </div>
 
-      {activeEvent ? (
+      {loading ? (
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center">
+          <CircularLoadingSpinner
+            size="lg"
+            color="teal"
+            label="Loading GATI Neural Analysis..."
+            sublabel="Extracting multi-field safety semantics, energy pathways, and precursor potentials from TiDB."
+          />
+        </div>
+      ) : activeEvent ? (
         <div className="space-y-6">
 
-          {/* Top 4 AI Metric Cards */}
+          {/* Top 4 AI Metric Cards with Circular Progress Indicators */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             
-            {/* 1. SIF Potential */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">SIF Potential</span>
-                <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${isSifPrecursor ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                  <ShieldAlert className="h-4 w-4" />
+            {/* 1. SIF Potential with Circular Meter */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">SIF Potential</span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className={`text-2xl font-black font-mono ${isSifPrecursor ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    {isSifPrecursor ? 'YES' : 'NO'}
+                  </span>
                 </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Precursor to severe fatality</div>
               </div>
-              <div className="flex items-baseline gap-2 mt-2">
-                <span className={`text-2xl font-black font-mono ${isSifPrecursor ? 'text-rose-600' : 'text-emerald-600'}`}>
-                  {isSifPrecursor ? 'YES' : 'NO'}
-                </span>
-                <span className="text-xs text-slate-400 font-bold">({sifProbability}% prob)</span>
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1">Precursor to serious injury / fatality</div>
+              <CircularProgress
+                value={sifProbability}
+                size={54}
+                strokeWidth={5}
+                color={isSifPrecursor ? 'rose' : 'emerald'}
+                showValue={true}
+                valueSuffix="%"
+              />
             </div>
 
-            {/* 2. AI Confidence Score */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Confidence Score</span>
-                <div className="h-7 w-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                  <Sparkles className="h-4 w-4" />
+            {/* 2. AI Confidence Score with Circular Confidence Gauge */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">NLP Confidence</span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-black text-blue-600 font-mono">
+                    {Math.round(confidenceScore)}%
+                  </span>
+                  <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded">High</span>
                 </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Extraction certitude level</div>
               </div>
-              <div className="flex items-baseline gap-2 mt-2">
-                <span className="text-2xl font-black text-blue-600 font-mono">
-                  {confidenceScore}%
-                </span>
-                <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded">High</span>
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1">NLP extraction certitude level</div>
+              <CircularProgress
+                value={confidenceScore}
+                size={54}
+                strokeWidth={5}
+                color="blue"
+                showValue={false}
+                icon={Sparkles}
+              />
             </div>
 
-            {/* 3. Risk Level */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Assessed Risk</span>
-                <RiskBadge level={activeEvent.risk_level} />
+            {/* 3. Composite Risk Level with Circular Risk Gauge */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Assessed Risk</span>
+                <div className="text-xl font-black text-slate-900 mt-1 font-mono">
+                  {activeEvent.risk_level || 'HIGH'}
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Composite severity index</div>
               </div>
-              <div className="text-xl font-black text-slate-900 mt-2 font-mono">
-                {activeEvent.risk_level}
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1">Classification severity index</div>
+              <RiskScoreMeter
+                score={riskScoreVal}
+                max={100}
+                size={54}
+                showBadge={false}
+                riskLevel={activeEvent.risk_level}
+              />
             </div>
 
             {/* 4. Life-Saving Rule */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs">
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Identified LSR</span>
                 <div className="h-7 w-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
@@ -236,7 +261,7 @@ export const AiAnalysis: React.FC<AiAnalysisProps> = ({
               <div className="text-sm font-black text-slate-900 mt-2 truncate">
                 {activeEvent.life_saving_rule || 'Energy Isolation'}
               </div>
-              <div className="text-[10px] text-slate-400 mt-1">Governing Life-Saving Rule</div>
+              <div className="text-[10px] text-slate-400 mt-1">Governing IOGP Safety Standard</div>
             </div>
 
           </div>

@@ -19,6 +19,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { User } from '../types';
+import { CircularProgress, CircularLoadingSpinner, CircularTimer } from '../components/UIElements';
 
 interface WorkerPortalProps {
   user?: User;
@@ -416,39 +417,49 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
             <div className="space-y-4 animate-in fade-in">
               <div className="p-6 rounded-2xl bg-gradient-to-b from-[#E8F6F4]/40 to-white border-2 border-dashed border-[#008779]/40 flex flex-col items-center justify-center text-center space-y-4">
                 
-                {/* Pulsing Mic Button */}
-                <button
-                  type="button"
-                  onClick={isRecording ? stopRecording : startRecording}
-                  className={`h-16 w-16 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md ${
-                    isRecording
-                      ? 'bg-red-500 text-white animate-pulse ring-8 ring-red-100'
-                      : 'bg-[#008779] text-white hover:bg-[#007064] hover:scale-105'
-                  }`}
-                >
-                  {isRecording ? <MicOff className="h-7 w-7" /> : <Mic className="h-7 w-7" />}
-                </button>
-
-                <div>
-                  <div className="text-sm font-bold text-slate-800">
-                    {isRecording ? 'Listening... Speak clearly into your mic' : 'Click to Record Voice Report'}
+                {/* Circular Voice Recording Indicator & Pulsing Mic */}
+                {isRecording ? (
+                  <CircularTimer
+                    seconds={recordingSeconds}
+                    maxSeconds={60}
+                    isRecording={true}
+                    size={100}
+                    onStop={stopRecording}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={startRecording}
+                      className="h-16 w-16 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md bg-[#008779] text-white hover:bg-[#007064] hover:scale-105"
+                    >
+                      <Mic className="h-7 w-7" />
+                    </button>
+                    <div className="mt-3">
+                      <div className="text-sm font-bold text-slate-800">
+                        Click to Record Voice Report
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        Continuous voice transcription enabled
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    {isRecording ? (
-                      <span className="text-red-600 font-bold">Recording: {recordingSeconds}s (Click mic when done)</span>
-                    ) : (
-                      'Supports English, Hindi, and regional speech'
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Transcribed text box */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                  <Volume2 className="h-3.5 w-3.5 text-[#008779]" />
-                  <span>Voice Transcript (Generated):</span>
-                  {isTranscribing && <span className="text-[10px] text-[#008779] font-bold animate-pulse">Refining with Whisper AI...</span>}
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Volume2 className="h-3.5 w-3.5 text-[#008779]" />
+                    <span>Voice Transcript (Generated):</span>
+                  </span>
+                  {isTranscribing && (
+                    <span className="flex items-center gap-1 text-[10px] text-[#008779] font-bold">
+                      <CircularProgress value={75} size={16} strokeWidth={2} showValue={false} color="teal" />
+                      <span>Refining with Whisper AI...</span>
+                    </span>
+                  )}
                 </label>
                 <textarea
                   rows={4}

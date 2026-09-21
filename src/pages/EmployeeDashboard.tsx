@@ -21,6 +21,7 @@ import {
 } from 'recharts';
 import { apiUrl } from '../config/api';
 import { User, SafetyEvent } from '../types';
+import { CircularProgress, CircularLoadingSpinner } from '../components/UIElements';
 
 interface EmployeeDashboardProps {
   user: User;
@@ -180,59 +181,91 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Card 1: Total Reports Submitted */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-md transition border-l-4 border-l-[#008779]">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-[#E8F6F4] text-[#008779]">
-              <FileText className="h-4 w-4" />
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-md transition border-l-4 border-l-[#008779] flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-[#E8F6F4] text-[#008779]">
+                <FileText className="h-4 w-4" />
+              </div>
+              <span className="text-xs font-semibold text-slate-600">Total Submitted</span>
             </div>
-            <span className="text-xs font-semibold text-slate-600">Total Submitted</span>
+            <div className="text-3xl font-extrabold text-slate-900 mt-2">{totalCount}</div>
+            <div className="text-[11px] text-slate-400 font-medium mt-1">
+              {totalCount > 0 ? `${totalCount} logged` : 'No reports yet'}
+            </div>
           </div>
-          <div className="text-3xl font-extrabold text-slate-900 mt-3">{totalCount}</div>
-          <div className="text-[11px] text-slate-400 font-medium mt-1">
-            {totalCount > 0 ? `${totalCount} observations logged` : 'No reports filed yet'}
+          <div className="h-10 w-10 rounded-full bg-[#E8F6F4] flex items-center justify-center text-[#008779] font-mono font-bold text-xs">
+            100%
           </div>
         </div>
 
         {/* Card 2: Reports Completed */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-md transition border-l-4 border-l-emerald-500">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
-              <CheckCircle2 className="h-4 w-4" />
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-md transition border-l-4 border-l-emerald-500 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600">
+                <CheckCircle2 className="h-4 w-4" />
+              </div>
+              <span className="text-xs font-semibold text-slate-600">Completed</span>
             </div>
-            <span className="text-xs font-semibold text-slate-600">Completed</span>
+            <div className="text-3xl font-extrabold text-slate-900 mt-2">{completedCount}</div>
+            <div className="text-[11px] text-emerald-600 font-semibold mt-1">
+              {totalCount > 0 ? `${Math.round((completedCount / totalCount) * 100)}% resolved` : '0 resolved'}
+            </div>
           </div>
-          <div className="text-3xl font-extrabold text-slate-900 mt-3">{completedCount}</div>
-          <div className="text-[11px] text-emerald-600 font-semibold mt-1">
-            {totalCount > 0 ? `${Math.round((completedCount / totalCount) * 100)}% resolved` : '0 resolved'}
-          </div>
+          <CircularProgress
+            value={totalCount > 0 ? (completedCount / totalCount) * 100 : 0}
+            size={46}
+            strokeWidth={4.5}
+            color="emerald"
+            showValue={true}
+          />
         </div>
 
-        {/* Card 3: Pending */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-md transition border-l-4 border-l-amber-500">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
-              <Clock className="h-4 w-4" />
+        {/* Card 3: Pending Review */}
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-md transition border-l-4 border-l-amber-500 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600">
+                <Clock className="h-4 w-4" />
+              </div>
+              <span className="text-xs font-semibold text-slate-600">Pending Review</span>
             </div>
-            <span className="text-xs font-semibold text-slate-600">Pending Review</span>
+            <div className="text-3xl font-extrabold text-slate-900 mt-2">{pendingCount}</div>
+            <div className="text-[11px] text-amber-600 font-semibold mt-1">
+              {pendingCount > 0 ? `${pendingCount} in workflow` : 'All resolved'}
+            </div>
           </div>
-          <div className="text-3xl font-extrabold text-slate-900 mt-3">{pendingCount}</div>
-          <div className="text-[11px] text-amber-600 font-semibold mt-1">
-            {pendingCount > 0 ? `${pendingCount} in HSE workflow` : 'All reports resolved'}
-          </div>
+          <CircularProgress
+            value={totalCount > 0 ? (pendingCount / totalCount) * 100 : 0}
+            size={46}
+            strokeWidth={4.5}
+            color="amber"
+            showValue={true}
+          />
         </div>
 
         {/* Card 4: High SIF Risk */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-md transition border-l-4 border-l-red-500">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-red-50 text-red-600">
-              <ShieldAlert className="h-4 w-4" />
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-md transition border-l-4 border-l-red-500 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-red-50 text-red-600">
+                <ShieldAlert className="h-4 w-4" />
+              </div>
+              <span className="text-xs font-semibold text-slate-600">SIF High Risk</span>
             </div>
-            <span className="text-xs font-semibold text-slate-600">SIF High Risk</span>
+            <div className="text-3xl font-extrabold text-slate-900 mt-2">{highRiskCount}</div>
+            <div className={`text-[11px] font-semibold mt-1 ${highRiskCount > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+              {highRiskCount > 0 ? 'Urgent Precursors' : 'Zero High Risk'}
+            </div>
           </div>
-          <div className="text-3xl font-extrabold text-slate-900 mt-3">{highRiskCount}</div>
-          <div className={`text-[11px] font-semibold mt-1 ${highRiskCount > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-            {highRiskCount > 0 ? 'Urgent SIF Precursors' : 'Zero High Risk'}
-          </div>
+          <CircularProgress
+            value={totalCount > 0 ? (highRiskCount / totalCount) * 100 : 0}
+            size={46}
+            strokeWidth={4.5}
+            color={highRiskCount > 0 ? 'rose' : 'emerald'}
+            showValue={true}
+          />
         </div>
 
       </div>

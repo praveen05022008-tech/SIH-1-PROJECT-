@@ -7,6 +7,7 @@ import {
   ArrowUpRight, Sparkles, Send, Eye, Image as ImageIcon, Lock, Users
 } from 'lucide-react';
 import { OfficerProfile, SafetyEvent, User as UserType } from '../types';
+import { CircularProgress, RiskScoreMeter, ConfidenceGauge, CircularLoadingSpinner } from '../components/UIElements';
 
 interface AssignOfficerProps {
   user?: UserType | null;
@@ -463,20 +464,34 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
                         </div>
                       </td>
 
-                      {/* 3. RISK SCORE */}
+                      {/* 3. RISK SCORE WITH CIRCULAR PROGRESS */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wider ${
-                          ai.riskLevel === 'CRITICAL'
-                            ? 'bg-red-100 text-red-700 border border-red-200'
-                            : ai.riskLevel === 'HIGH'
-                            ? 'bg-orange-100 text-orange-700 border border-orange-200'
-                            : ai.riskLevel === 'MEDIUM'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        }`}>
-                          {isHighSif && <Flame className="h-3 w-3 shrink-0" />}
-                          <span>{ai.score10} / 10 • {ai.isSif ? 'HIGH SIF' : 'NON-SIF'}</span>
-                        </span>
+                        <div className="flex items-center gap-2.5">
+                          <CircularProgress
+                            value={Number(ai.score10) * 10}
+                            max={100}
+                            size={32}
+                            strokeWidth={3}
+                            color={Number(ai.score10) >= 7 ? 'rose' : Number(ai.score10) >= 4 ? 'amber' : 'emerald'}
+                            displayValue={
+                              <span className="text-[9px] font-black font-mono">
+                                {ai.score10}
+                              </span>
+                            }
+                          />
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wider ${
+                            ai.riskLevel === 'CRITICAL'
+                              ? 'bg-red-100 text-red-700 border border-red-200'
+                              : ai.riskLevel === 'HIGH'
+                              ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                              : ai.riskLevel === 'MEDIUM'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          }`}>
+                            {isHighSif && <Flame className="h-3 w-3 shrink-0" />}
+                            <span>{ai.isSif ? 'HIGH SIF' : 'NON-SIF'}</span>
+                          </span>
+                        </div>
                       </td>
 
                       {/* 4. VIEW BUTTON */}
@@ -688,8 +703,8 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
                     </p>
                   </div>
 
-                  {/* 5. RISK SCORE (AI PREDICTED) */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-amber-50/40 border border-amber-100 flex flex-col justify-between space-y-3">
+                  {/* 5. RISK SCORE (AI PREDICTED WITH CIRCULAR GAUGE) */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-amber-50/40 border border-amber-100 flex items-center justify-between">
                     <div>
                       <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block mb-1">
                         AI Calculated Risk Score
@@ -699,27 +714,26 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
                           {ai.score10}
                         </span>
                         <span className="text-xs font-bold text-slate-400">/ 10.0</span>
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ml-auto ${
-                          ai.riskLevel === 'CRITICAL'
-                            ? 'bg-red-100 text-red-700'
-                            : ai.riskLevel === 'HIGH'
-                            ? 'bg-orange-100 text-orange-700'
-                            : ai.riskLevel === 'MEDIUM'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-emerald-100 text-emerald-800'
-                        }`}>
-                          {ai.riskLevel}
-                        </span>
                       </div>
+                      <span className={`text-[9.5px] font-black px-2 py-0.5 rounded-full uppercase mt-1 inline-block ${
+                        ai.riskLevel === 'CRITICAL'
+                          ? 'bg-red-100 text-red-700'
+                          : ai.riskLevel === 'HIGH'
+                          ? 'bg-orange-100 text-orange-700'
+                          : ai.riskLevel === 'MEDIUM'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-emerald-100 text-emerald-800'
+                      }`}>
+                        {ai.riskLevel}
+                      </span>
                     </div>
-                    <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${
-                          Number(ai.score10) >= 7.5 ? 'bg-red-500' : Number(ai.score10) >= 5.0 ? 'bg-orange-500' : 'bg-emerald-500'
-                        }`}
-                        style={{ width: `${Math.min(100, Number(ai.score10) * 10)}%` }}
-                      />
-                    </div>
+                    <RiskScoreMeter
+                      score={Number(ai.score10)}
+                      max={10}
+                      size={54}
+                      showBadge={false}
+                      riskLevel={ai.riskLevel}
+                    />
                   </div>
 
                 </div>
@@ -731,9 +745,16 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
                       <Sparkles className="h-3.5 w-3.5 text-[#008779]" />
                       <span>AI Model Rationale & Life-Saving Rules</span>
                     </span>
-                    <span className="text-[10.5px] font-bold text-slate-400 font-mono">
-                      Confidence: {viewingReport.ai_confidence ? `${viewingReport.ai_confidence}%` : '94.0%'}
-                    </span>
+                    <div className="flex items-center gap-1.5 text-[10.5px] font-bold text-slate-500 font-mono">
+                      <CircularProgress
+                        value={viewingReport.ai_confidence || 94}
+                        size={22}
+                        strokeWidth={2.5}
+                        color="teal"
+                        showValue={false}
+                      />
+                      <span>Certitude: {viewingReport.ai_confidence ? `${viewingReport.ai_confidence}%` : '94.0%'}</span>
+                    </div>
                   </div>
 
                   <p className="text-xs text-slate-600 leading-relaxed font-medium bg-white p-3 rounded-xl border border-slate-100">

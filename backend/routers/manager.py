@@ -12,6 +12,15 @@ router = APIRouter(prefix="/api", tags=["Manager & Officer Workflow"])
 
 def report_to_task_dict(r: IncidentReport) -> dict:
     score_10 = round(r.risk_score / 10.0, 1) if r.risk_score else (round(r.severity_score, 1) if r.severity_score else 2.5)
+    evidence_photo_list = []
+    if getattr(r, 'evidence_photos', None):
+        try:
+            evidence_photo_list = json.loads(r.evidence_photos)
+        except Exception:
+            evidence_photo_list = [r.evidence_photos]
+    if getattr(r, 'investigation_photo_url', None) and r.investigation_photo_url not in evidence_photo_list:
+        evidence_photo_list.append(r.investigation_photo_url)
+
     return {
         "task_id": f"TSK-{r.report_code or r.id}",
         "id": r.id,
@@ -23,6 +32,10 @@ def report_to_task_dict(r: IncidentReport) -> dict:
         "audio_transcript": r.audio_transcript,
         "audio_url": r.audio_url,
         "photo_url": r.photo_url,
+        "initial_photo_url": r.photo_url,
+        "investigation_photo_url": getattr(r, 'investigation_photo_url', None) or (evidence_photo_list[0] if evidence_photo_list else None),
+        "evidence_photos": evidence_photo_list,
+        "evidence_photo": getattr(r, 'investigation_photo_url', None) or (evidence_photo_list[0] if evidence_photo_list else None),
         "hazard_category": r.hazard_category,
         "site": r.site or "Site Alpha - Jamnagar Complex",
         "unit": r.unit or "Unit 04 - FCCU",
@@ -51,6 +64,7 @@ def report_to_task_dict(r: IncidentReport) -> dict:
         "due_date": (r.created_at + timedelta(days=2)).isoformat() if r.created_at else None,
         
         "officer_notes": r.officer_notes,
+        "submitted_findings": r.officer_notes,
         "rejection_reason": r.rejection_reason,
         "recheck_notes": r.recheck_notes,
         "is_recheck_ready": r.status == "Recheck" or r.officer_status == "Forwarded_Recheck",
@@ -227,6 +241,16 @@ async def submit_officer_recheck(task_id: str, request: Request, db: Session = D
     report.status = "Recheck"
     report.officer_status = "Forwarded_Recheck"
     report.officer_notes = body.get("findings") or body.get("actions_taken") or body.get("notes") or "Corrective actions completed and submitted for sign-off."
+
+    # Save evidence photos attached by officer
+    photos = body.get("evidence_photos") or []
+    single_photo = body.get("photo_url") or body.get("evidence_photo") or (photos[0] if isinstance(photos, list) and len(photos) > 0 else None)
+    if single_photo:
+        report.investigation_photo_url = single_photo
+        if not report.photo_url:
+            report.photo_url = single_photo
+    if photos and isinstance(photos, list):
+        report.evidence_photos = json.dumps(photos)
 
     db.commit()
     db.refresh(report)

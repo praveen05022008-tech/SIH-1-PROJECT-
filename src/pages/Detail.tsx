@@ -28,6 +28,7 @@ import {
   Shield,
   Search
 } from 'lucide-react';
+import { CircularProgress, RiskScoreMeter, CircularLoadingSpinner } from '../components/UIElements';
 
 interface DetailProps {
   event: SafetyEvent;
@@ -245,9 +246,13 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] text-slate-500">
-        <RefreshCcw className="h-8 w-8 animate-spin text-industrial-blue mb-3" />
-        <p className="text-sm font-semibold">Loading safety observation report...</p>
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)]">
+        <CircularLoadingSpinner
+          size="lg"
+          color="teal"
+          label="Loading safety observation report..."
+          sublabel="Retrieving event diagnostics, evidence files, and audit trails."
+        />
       </div>
     );
   }
@@ -398,45 +403,76 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
               </div>
             )}
 
-            {/* 4 Score Highlights */}
+            {/* 4 Score Highlights with Circular Progress Indicators */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-xs">
-              <div className={`p-3.5 rounded-2xl border ${
+              
+              {/* Risk Level */}
+              <div className={`p-3.5 rounded-2xl border flex flex-col items-center justify-between ${
                 (currentEvent.sif_risk_score ?? score) >= 8.5
                   ? 'bg-rose-50/70 border-rose-200 text-rose-800'
                   : (currentEvent.sif_risk_score ?? score) >= 6.5
                     ? 'bg-amber-50/70 border-amber-200 text-amber-800'
                     : 'bg-emerald-50/70 border-emerald-200 text-emerald-800'
               }`}>
-                <span className="text-[9px] uppercase font-bold tracking-wider opacity-70">Risk Level</span>
-                <div className="text-base font-black mt-0.5 tracking-wide">
+                <span className="text-[9px] uppercase font-bold tracking-wider opacity-70 block mb-1">Risk Level</span>
+                <div className="text-base font-black tracking-wide">
                   {currentEvent.risk_level ?? (score >= 6.5 ? 'HIGH' : 'MEDIUM')}
                 </div>
+                <span className="text-[9px] font-bold opacity-80 mt-1">Severity Rating</span>
               </div>
 
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
-                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Composite Risk</span>
-                <div className="text-base font-black text-slate-900 mt-0.5 font-mono">
-                  {currentEvent.sif_risk_score ?? (Math.round(score * 10) / 10)} <span className="text-xs text-slate-400 font-normal">/ 10</span>
-                </div>
+              {/* Composite Risk with Circular Gauge */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex flex-col items-center justify-between">
+                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider block mb-1">Composite Risk</span>
+                <CircularProgress
+                  value={((currentEvent.sif_risk_score ?? score) / 10) * 100}
+                  max={100}
+                  size={42}
+                  strokeWidth={4}
+                  color={(currentEvent.sif_risk_score ?? score) >= 7 ? 'rose' : (currentEvent.sif_risk_score ?? score) >= 4 ? 'amber' : 'emerald'}
+                  displayValue={
+                    <span className="text-[10px] font-black font-mono">
+                      {(currentEvent.sif_risk_score ?? (Math.round(score * 10) / 10)).toFixed(1)}
+                    </span>
+                  }
+                />
+                <span className="text-[9px] text-slate-400 mt-1 font-mono">/ 10 Scale</span>
               </div>
 
-              <div className={`p-3.5 rounded-2xl border ${
+              {/* SIF Precursor with Circular Meter */}
+              <div className={`p-3.5 rounded-2xl border flex flex-col items-center justify-between ${
                 currentEvent.is_sif_precursor === 'YES' || currentEvent.sif_probability >= 50.0
-                  ? 'bg-rose-50 border-rose-200 text-rose-700 font-black'
+                  ? 'bg-rose-50 border-rose-200 text-rose-700'
                   : 'bg-slate-50 border-slate-200 text-slate-700'
               }`}>
-                <span className="text-[9px] uppercase font-bold tracking-wider opacity-70">SIF Precursor</span>
-                <div className="text-base font-black mt-0.5">
-                  {currentEvent.is_sif_precursor === 'YES' || currentEvent.sif_probability >= 50.0 ? 'YES' : 'NO'}
-                  <span className="text-[10px] ml-1 font-normal opacity-80">({currentEvent.sif_probability ?? 50}%)</span>
-                </div>
+                <span className="text-[9px] uppercase font-bold tracking-wider opacity-70 block mb-1">SIF Precursor</span>
+                <CircularProgress
+                  value={currentEvent.sif_probability ?? 50}
+                  max={100}
+                  size={42}
+                  strokeWidth={4}
+                  color={currentEvent.is_sif_precursor === 'YES' || currentEvent.sif_probability >= 50.0 ? 'rose' : 'emerald'}
+                  displayValue={
+                    <span className="text-[10px] font-black font-mono">
+                      {currentEvent.is_sif_precursor === 'YES' || currentEvent.sif_probability >= 50.0 ? 'YES' : 'NO'}
+                    </span>
+                  }
+                />
+                <span className="text-[9px] font-bold opacity-80 mt-1">{currentEvent.sif_probability ?? 50}% Fatal Prob</span>
               </div>
 
-              <div className="bg-[#E8F6F4]/50 border border-[#008779]/20 rounded-2xl p-3.5">
-                <span className="text-[9px] text-[#008779] uppercase font-bold tracking-wider">AI Confidence</span>
-                <div className="text-base font-black text-[#008779] mt-0.5 font-mono">
-                  {currentEvent.confidence ?? 88.0}%
-                </div>
+              {/* AI Confidence with Circular Meter */}
+              <div className="bg-[#E8F6F4]/50 border border-[#008779]/20 rounded-2xl p-3.5 flex flex-col items-center justify-between">
+                <span className="text-[9px] text-[#008779] uppercase font-bold tracking-wider block mb-1">AI Confidence</span>
+                <CircularProgress
+                  value={currentEvent.confidence ?? 88.0}
+                  max={100}
+                  size={42}
+                  strokeWidth={4}
+                  color="teal"
+                  showValue={true}
+                />
+                <span className="text-[9px] text-[#008779] font-bold mt-1">NLP Certitude</span>
               </div>
             </div>
 
